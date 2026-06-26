@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime, date
 
 columns = ['Date','PIB']
-data = pd.read_csv("data/PIB/Revenu national brut disponible et épargne nationale brute (Trimestrielle Base 2014)_2026-06-25.csv")
+data = pd.read_csv("./../data/PIB/Revenu national brut disponible et épargne nationale brute (Trimestrielle Base 2014)_2026-06-25.csv")
 
 def extract_date(quarter : pd.Series):
     new_dates = []
@@ -27,5 +27,5 @@ for i in range(len(data)):
         ligne['Date'] = date(ligne['Date'].year, ligne['Date'].month, 1)
         data = pd.concat([data, pd.DataFrame([[ligne['Date'], ligne['PIB']]], columns=columns)], ignore_index=True)
 data = data.sort_values(by='Date', ignore_index = True)
-data.to_csv("./data/PIB/PIB.csv", index=False)
+data.to_csv("./../data/PIB/PIB.csv", index=False)
 print(data)

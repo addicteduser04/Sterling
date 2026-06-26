@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime, date
 
 columns = ['DATE','IPC']
-data = pd.read_csv("data/IPC/Indice des prix à la consommation (Mensuel) (Base 100 2017)_2026-06-25.csv")
+data = pd.read_csv("./../data/IPC/Indice des prix à la consommation (Mensuel) (Base 100 2017)_2026-06-25.csv")
 
 def extract_date(dates: pd.Series):
     new_dates = []
@@ -19,4 +19,4 @@ data= data.drop(columns=["Mois"])
 data = data.sort_values(by="DATE", ascending=True, ignore_index=True)
 data = data[columns]
 print(data)
-data.to_csv("./data/IPC/CPI.csv", index=False)
+data.to_csv("./../data/IPC/CPI.csv", index=False)
