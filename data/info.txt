@@ -1,0 +1,7 @@
+jusqu'a maintenant les donnees qu' on a sont: 
+
+les taux d'interets : 2015-2026 
+PIB : 2014-2026 quarterly
+taux directeur : 2014-2026 quarterly
+IPC : 2017-2026 monthly
+ECB Rates : 2004 - 2026
