@@ -16,6 +16,15 @@ for feature in features:
         model.fit(X, y)
         score = model.score(X, y)
         resultats.append({'feature': feature, 'cible': cible, 'score': score})
+
+for cible in cibles:
+    X = data[features]
+    y = data[cible]
+    model.fit(X, y)
+    score = model.score(X, y)
+    resultats.append({'feature': 'all_features', 'cible': cible, 'score': score})
+
 df_resultats = pd.DataFrame(resultats)
+
 print(df_resultats)
 df_resultats.to_csv("./data/linear_regression_results.csv", index=False)
