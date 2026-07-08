@@ -8,7 +8,7 @@ class DataCollector(ABC):
         pass
 
 class RatesCollector(DataCollector):
-    def __init__(self,file_path = "/data/TAUX/processed/taux_bam_monthly.csv"):
+    def __init__(self,file_path = "./data/TAUX/processed/taux_bam_monthly.csv"):
         self.file_path = file_path
     def collect_data(self):
         data = pd.read_csv(self.file_path)
@@ -18,7 +18,7 @@ class RatesCollector(DataCollector):
         return data
     
 class TauxDirecteurCollector(DataCollector):
-    def __init__(self,file_path = "/data/taux_directeur/taux_directeur_preprocessed.csv"):
+    def __init__(self,file_path = "./data/taux_directeur/taux_directeur_preprocessed.csv"):
         self.file_path = file_path
     def collect_data(self):
         data = pd.read_csv(self.file_path)
@@ -57,6 +57,16 @@ class EuroRatesCollector(DataCollector):
         print(data.head())
         return data
     
+class BetaCollector(DataCollector):
+    def __init__(self,file_path="./data/betas/bam/betas_nelson_siegel_bam.csv"):
+        self.file_path = file_path
+    def collect_data(self):
+        data = pd.read_csv(self.file_path)
+        if data.empty:
+            print("The beta data is empty.")
+        print(data.head())
+        return data
+
 def test_collectors():
     collector = RatesCollector(file_path="./data/TAUX/processed/taux_bam_monthly.csv")
 
@@ -65,6 +75,7 @@ def test_collectors():
     print(f"Data collected:\n{data.head()}\n")
     
     return data
+
 
 if __name__ == "__main__":
     test_collectors()

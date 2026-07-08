@@ -92,14 +92,16 @@ def fit_ns_panel(df):
     return results
 
 # ── Usage ──────────────────────────────────────────────────────────────────────
+def calculate_and_save_betas(collector_class, output_path):
+    collector = collector_class()
+    df = collector.collect_data()
 
-collector = EuroRatesCollector()
-df = collector.collect_data()
+    betas = fit_ns_panel(df)
+    betas = betas.set_index(df["Date"])  # Assurer que l'index est correct
 
-betas = fit_ns_panel(df)
-betas = betas.set_index(df["Date"])  # Assurer que l'index est correct
+    betas.to_csv(output_path)
+    print(betas.head(10))
+    print(f"\nRMSE moyen : {betas['rmse'].mean():.6f}")
+    print(f"Dates avec fit échoué : {betas['beta0'].isna().sum()}")
+    return betas
 
-betas.to_csv("./data/betas/ecb/betas_nelson_siegel_ecb.csv")
-print(betas.head(10))
-print(f"\nRMSE moyen : {betas['rmse'].mean():.6f}")
-print(f"Dates avec fit échoué : {betas['beta0'].isna().sum()}")
