@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.optimize import minimize_scalar
 from sklearn.linear_model import LinearRegression
+from src.data_collect import RatesCollector, EuroRatesCollector
 
-# 1. Define your market data (Example: US Treasury Yield Curve)
 # Maturities in years: 3mo, 6mo, 1yr, 2yr, 5yr, 10yr, 30yr
 maturities = np.array([0.08, 0.4, 0.65, 1.25, 3.82, 5.33, 8.99, 13.08, 19.16, 28.84])
 # Observed yields in percentages (or decimals)

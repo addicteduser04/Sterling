@@ -14,4 +14,15 @@ for yields in YIELDS:
     yield_df[yields] = rate
 
 
-yield_df.to_csv("./../data/taux_europe/ECB Data Portal.csv", index=False)
+def to_monthly_mean(df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate daily curves to monthly mean per tenor."""
+    monthly = df.resample('ME').mean()
+    monthly.index = (monthly.index + pd.offsets.MonthBegin(1)) 
+    return monthly
+
+yield_df = yield_df.set_index('Date')
+
+yield_df = to_monthly_mean(yield_df)
+print(yield_df.head())
+
+yield_df.to_csv("./../data/taux_europe/ECB Data Portal Monthly.csv", index=True)
