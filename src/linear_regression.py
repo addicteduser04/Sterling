@@ -27,4 +27,4 @@ for cible in cibles:
 df_resultats = pd.DataFrame(resultats)
 
 print(df_resultats)
-df_resultats.to_csv("./data/linear_regression_results.csv", index=False)
+df_resultats.to_csv("./data/analysis_results/linear_regression_results.csv", index=False)

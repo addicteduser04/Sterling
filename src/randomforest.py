@@ -20,4 +20,4 @@ for cible in cibles:
         resultats.append({'cible': cible, 'feature': feature, 'importance': importance[i]})
 df_resultats = pd.DataFrame(resultats)
 print(df_resultats)
-df_resultats.to_csv("./data/random_forest_results.csv", index=False)
+df_resultats.to_csv("./data/analysis_results/random_forest_results.csv", index=False)

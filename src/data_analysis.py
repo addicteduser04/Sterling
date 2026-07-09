@@ -42,13 +42,13 @@ for col in features:
         correlation, p_value = pearsonr(df_master[col], df_master[cible])
         resultats.append({'feature': col, 'cible': cible, 'correlation': correlation, 'p_value': p_value})
 df_resultats = pd.DataFrame(resultats)
-df_resultats.to_csv("./data/correlation_results.csv", index=False)
+df_resultats.to_csv("./data/analysis_results/correlation_results.csv", index=False)
 
 
 
 
 
 
-df_master.to_csv("./data/master_data.csv", index=True)
+df_master.to_csv("./data/analysis_results/master_data.csv", index=False)
 df_master = df_master.drop(columns = ['lambda','rmse','europe_lambda','europe_rmse'])
-df_master.to_csv("./data/master_data_cleaned.csv", index=False)
+df_master.to_csv("./data/analysis_results/master_data_cleaned.csv", index=False)

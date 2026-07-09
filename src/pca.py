@@ -18,3 +18,5 @@ pca_df = pd.DataFrame(data=pca_features, columns=['PC1', 'PC2', 'PC3'])
 
 print("Transformed Data shape:", pca_df.shape)
 print("\nExplained Variance Ratio per component:", pca.explained_variance_ratio_)
+
+pca_df.to_csv("./data/analysis_results/pca_transformed_data.csv", index=False)   
