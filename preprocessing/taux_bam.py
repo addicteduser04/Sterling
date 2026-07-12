@@ -1,132 +1,124 @@
-import re
-import pandas as pd  # type: ignore
 from pathlib import Path
 
-YIELDS = ['3M','6M','1Y','2Y','3Y','4Y','5Y','6Y','7Y','8Y','9Y','10Y',
-          '11Y','12Y','13Y','14Y','15Y','16Y','17Y','18Y','19Y','20Y','30Y']
+import numpy as np
+import pandas as pd
 
-RAW_YIELDS = {
-    '13 semaines': '3M', '26 semaines': '6M', '52 semaines': '1Y',
-    '2 ans': '2Y', '5 ans': '5Y', '10 ans': '10Y',
-    '15 ans': '15Y', '20 ans': '20Y', '30 ans': '30Y',
+
+ROOT = Path(__file__).resolve().parent.parent
+RAW_PATH = ROOT / "data" / "TAUX" / "raw" / "Data.xlsm"
+DAILY_OUTPUT_PATH = ROOT / "data" / "TAUX" / "processed" / "taux_bam.csv"
+MONTHLY_OUTPUT_PATH = ROOT / "data" / "TAUX" / "processed" / "taux_bam_monthly.csv"
+
+YIELDS = [
+    "3M", "6M", "1Y", "2Y", "3Y", "4Y", "5Y", "6Y", "7Y", "8Y", "9Y",
+    "10Y", "11Y", "12Y", "13Y", "14Y", "15Y", "16Y", "17Y", "18Y", "19Y",
+    "20Y", "30Y"
+]
+
+RAW_COLUMN_MAP = {
+    "Date": "Date",
+    "13 sem": "3M",
+    "26 sem": "6M",
+    "52 sem": "1Y",
+    "2 ans": "2Y",
+    "5 ans": "5Y",
+    "10 ans": "10Y",
+    "15 ans": "15Y",
+    "20 ans": "20Y",
+    "30 ans": "30Y",
 }
-# Normalized lookup, tolerant of truncated/whitespace variants like "13 semain"
-RAW_YIELDS_NORM = {k.strip().lower(): v for k, v in RAW_YIELDS.items()}
 
-FORMAT_SWITCH_DATE = "20250903"  # new (filename-dated) format starts here
-FOLDER = Path("../data/TAUX/raw")
-FILENAME_DATE_RE = re.compile(r"(\d{8})")
+MATURITY_BY_TENOR = {
+    "3M": 0.25,
+    "6M": 0.5,
+    "1Y": 1.0,
+    "2Y": 2.0,
+    "3Y": 3.0,
+    "4Y": 4.0,
+    "5Y": 5.0,
+    "6Y": 6.0,
+    "7Y": 7.0,
+    "8Y": 8.0,
+    "9Y": 9.0,
+    "10Y": 10.0,
+    "11Y": 11.0,
+    "12Y": 12.0,
+    "13Y": 13.0,
+    "14Y": 14.0,
+    "15Y": 15.0,
+    "16Y": 16.0,
+    "17Y": 17.0,
+    "18Y": 18.0,
+    "19Y": 19.0,
+    "20Y": 20.0,
+    "30Y": 30.0,
+}
 
-
-def linear_interpolation(df: pd.DataFrame) -> pd.DataFrame:
-    """Fill missing tenor points cross-sectionally, per date."""
-    df = df.apply(pd.to_numeric, errors='coerce')
-    df = df.sort_index()
-    df = df.interpolate(method='linear', axis=1, limit_direction='both')
-    return df
-
-
-def match_tenor(label: str) -> str | None:
-    """Map a raw tenor label (possibly truncated) to a standardized code."""
-    norm = str(label).strip().lower()
-    if norm in RAW_YIELDS_NORM:
-        return RAW_YIELDS_NORM[norm]
-    for raw_key, code in RAW_YIELDS_NORM.items():
-        if raw_key.startswith(norm) or norm.startswith(raw_key):
-            return code
-    return None
-
-
-def extract_date_from_filename(name: str) -> pd.Timestamp:
-    m = FILENAME_DATE_RE.search(name)
-    if not m:
-        raise ValueError(f"no YYYYMMDD date found in filename: {name}")
-    return pd.to_datetime(m.group(1), format='%Y%m%d')
-
-
-def load_old_format(path: Path) -> pd.DataFrame:
-    """Pre-20250903: wide grid, dates as columns (before transpose), 23 tenors."""
-    raw = pd.read_excel(path)
-    raw = raw.T
-    raw = raw.drop("Tenor", errors="ignore")
-
-    parsed_index = pd.to_datetime(raw.index, format='%d/%m/%Y', errors='coerce', dayfirst=True)
-    bad_rows = parsed_index.isna()
-    if bad_rows.any():
-        print(f"  [warn] {path.name}: dropping non-date rows {list(raw.index[bad_rows])}")
-        raw = raw.loc[~bad_rows]
-        parsed_index = parsed_index[~bad_rows]
-    raw.index = parsed_index
-
-    if raw.shape[1] != len(YIELDS):
-        raise ValueError(f"expected {len(YIELDS)} cols, got {raw.shape[1]}")
-    raw.columns = YIELDS
-    return raw
-
-
-def load_new_format(path: Path) -> pd.DataFrame:
-    """From 20250903: single snapshot per file, Tenor + value column, date in filename."""
-    raw = pd.read_excel(path)
-    if raw.shape[1] < 2:
-        raise ValueError(f"expected at least 2 columns, got {raw.shape[1]}")
-
-    tenor_col, value_col = raw.columns[0], raw.columns[1]
-    raw = raw[[tenor_col, value_col]].copy()
-
-    codes = raw[tenor_col].map(match_tenor)
-    unmapped = raw.loc[codes.isna(), tenor_col].tolist()
-    if unmapped:
-        print(f"  [warn] {path.name}: unmapped tenor labels skipped: {unmapped}")
-
-    raw = raw.loc[codes.notna()]
-    codes = codes.loc[codes.notna()]
-
-    date = extract_date_from_filename(path.name)
-    row = pd.Series(raw[value_col].values, index=codes.values, name=date)
-    row = row.groupby(level=0).last()  # guard against duplicate tenor rows
-
-    df_row = row.to_frame().T
-    df_row = df_row.reindex(columns=YIELDS)
-    return df_row
-
-
-def load_curve_file(path: Path, folder_name: str) -> pd.DataFrame:
-    if folder_name < FORMAT_SWITCH_DATE:
-        return load_old_format(path)
-    return load_new_format(path)
-
-
-def load_all_curves(folder: Path) -> pd.DataFrame:
-    frames = []
-    for item in sorted(folder.iterdir()):
-        if not item.is_dir():
-            continue
-        excel_dir = item / "excel"
-        if not excel_dir.is_dir():
-            continue
-        for curve_file in sorted(excel_dir.iterdir()):
-            try:
-                frames.append(load_curve_file(curve_file, item.name))
-            except Exception as e:
-                print(f"  [error] failed on {item.name}/excel/{curve_file.name}: {e}")
-
-    if not frames:
-        return pd.DataFrame(columns=YIELDS)
-
-    data = pd.concat(frames, axis=0)
-    data = data[~data.index.duplicated(keep='last')]
-    data = data.sort_index()
-    return data
 
 def to_monthly_mean(df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate daily curves to monthly mean per tenor."""
-    monthly = df.resample('ME').mean()
-    monthly.index = (monthly.index + pd.offsets.MonthBegin(1)) 
+    monthly = df.resample("ME").mean()
+    monthly.index = monthly.index + pd.offsets.MonthBegin(1)
     return monthly
 
-data = load_all_curves(FOLDER)
-data_interp = linear_interpolation(data)
-data_monthly = to_monthly_mean(data_interp)
-data_interp.to_csv("../data/TAUX/processed/taux_bam.csv", index_label="Date")
-data_monthly.to_csv("../data/TAUX/processed/taux_bam_monthly.csv", index_label="Date")
-print(data_interp)
+
+def build_standardized_curve(raw_df: pd.DataFrame) -> pd.DataFrame:
+    """Rename existing columns and interpolate missing tenors linearly by maturity."""
+    df = raw_df.copy()
+    df = df.rename(columns={col: RAW_COLUMN_MAP[col] for col in RAW_COLUMN_MAP if col in df.columns})
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df = df.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
+    df = df.drop_duplicates(subset=["Date"], keep="last").reset_index(drop=True)
+
+    standardized = pd.DataFrame({"Date": df["Date"]})
+    for tenor in YIELDS:
+        if tenor in df.columns:
+            standardized[tenor] = pd.to_numeric(df[tenor], errors="coerce")
+        else:
+            standardized[tenor] = np.nan
+
+    for idx in range(len(standardized)):
+        available = {
+            tenor: float(standardized.loc[idx, tenor])
+            for tenor in YIELDS
+            if pd.notna(standardized.loc[idx, tenor])
+        }
+        if len(available) < 2:
+            continue
+
+        ordered = sorted(available.items(), key=lambda item: MATURITY_BY_TENOR[item[0]])
+        maturity_points = [MATURITY_BY_TENOR[tenor] for tenor, _ in ordered]
+        yield_points = [value for _, value in ordered]
+
+        for tenor in YIELDS:
+            if pd.notna(standardized.loc[idx, tenor]):
+                continue
+            maturity = MATURITY_BY_TENOR[tenor]
+            if maturity <= maturity_points[0]:
+                standardized.loc[idx, tenor] = yield_points[0]
+            elif maturity >= maturity_points[-1]:
+                standardized.loc[idx, tenor] = yield_points[-1]
+            else:
+                standardized.loc[idx, tenor] = np.interp(maturity, maturity_points, yield_points)
+
+    standardized = standardized.set_index("Date")
+    standardized = standardized.astype(float)
+    return standardized
+
+
+def main() -> None:
+    raw_df = pd.read_excel(RAW_PATH)
+    standardized = build_standardized_curve(raw_df)
+
+    standardized.to_csv(DAILY_OUTPUT_PATH, index=True)
+
+    monthly = to_monthly_mean(standardized)
+    monthly.to_csv(MONTHLY_OUTPUT_PATH, index=True)
+
+    print(standardized.head())
+    print("\nMonthly sample:")
+    print(monthly.head())
+
+
+if __name__ == "__main__":
+    main()
