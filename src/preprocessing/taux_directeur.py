@@ -36,3 +36,5 @@ def preprocess_td(file_path):
     df['Taux directeur'] = df['Taux directeur'].ffill()
 
     df.to_csv("./data/taux_directeur/taux_directeur_preprocessed.csv")
+    
+    return df
