@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from scipy.optimize import minimize
 from scipy.optimize import curve_fit
-from data_collect import RatesCollector, EuroRatesCollector
+from data_acquisition.data_collect import RatesCollector, EuroRatesCollector
 
 def nelson_siegel(tau, beta0, beta1, beta2, lam):
     """Yield curve NS pour une maturité tau (en années)"""
