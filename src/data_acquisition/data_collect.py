@@ -58,6 +58,7 @@ class EuroRatesCollector(DataCollector):
         return data
     
 class BetaCollector(DataCollector):
+    #file path is default to bam betas, specify path for ecb
     def __init__(self,file_path="./data/betas/bam/betas_nelson_siegel_bam.csv"):
         self.file_path = file_path
     def collect_data(self):
