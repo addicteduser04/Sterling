@@ -1,8 +1,10 @@
 import pandas as pd 
 from datetime import datetime, date
+from pathlib import Path
 
-columns = ['Date','PIB']
-data = pd.read_csv("./../data/PIB/Revenu national brut disponible et épargne nationale brute (Trimestrielle Base 2014)_2026-06-25.csv")
+
+INPUT_Path = Path("./data/PIB/Revenu national brut disponible et épargne nationale brute (Trimestrielle Base 2014)_2026-06-25.csv")
+
 
 def extract_date(quarter : pd.Series):
     new_dates = []
@@ -14,19 +16,24 @@ def extract_date(quarter : pd.Series):
         new_dates.append(date_obj)
     return new_dates
 
-dates = extract_date(data['Quarter'])
-data['Date'] = dates
-data = data.drop(columns=['Quarter'])
-data = data[columns]
-print(len(data))
-for i in range(len(data)):
-    for j in range (1,3):
-        ligne = data.iloc[i]
-        offset = pd.DateOffset(months=j)
-        ligne['Date'] = ligne['Date'] - offset
-        ligne['Date'] = date(ligne['Date'].year, ligne['Date'].month, 1)
-        data = pd.concat([data, pd.DataFrame([[ligne['Date'], ligne['PIB']]], columns=columns)], ignore_index=True)
-data = data.sort_values(by='Date', ignore_index = True)
 
-data.to_csv("./../data/PIB/PIB.csv", index=False)
-print(data)
+def preprocess_pib(file_path = INPUT_Path):
+    columns = ['Date','PIB']
+    data = pd.read_csv(file_path)
+    dates = extract_date(data['Quarter'])
+    data['Date'] = dates
+    data = data.drop(columns=['Quarter'])
+    data = data[columns]
+    print(len(data))
+    for i in range(len(data)):
+        for j in range (1,3):
+            ligne = data.iloc[i]
+            offset = pd.DateOffset(months=j)
+            ligne['Date'] = ligne['Date'] - offset
+            ligne['Date'] = date(ligne['Date'].year, ligne['Date'].month, 1)
+            data = pd.concat([data, pd.DataFrame([[ligne['Date'], ligne['PIB']]], columns=columns)], ignore_index=True)
+    data = data.sort_values(by='Date', ignore_index = True)
+
+    data.to_csv("./../data/PIB/PIB.csv", index=False)
+    print(data)
+    return data
