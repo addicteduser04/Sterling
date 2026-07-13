@@ -5,3 +5,5 @@ scikit-learn
 openpyxl
 statsmodels
 matplotlib
+yfinance
+investpy
