@@ -23,7 +23,6 @@ BASE_FEATURES = [
     "beta2",
     "Taux directeur",
     "IPC",
-    "PIB",
     "europe_beta0",
     "europe_beta1",
     "europe_beta2",
@@ -50,6 +49,8 @@ def build_lagged_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     # Create lagged features (shift positive = lag = past values)
     X = pd.DataFrame(index=df.index)
     for feat in BASE_FEATURES:
+        if feat == 'IPC':
+            X[f"{feat}_variation"] = df[feat].pct_change()
         X[f"{feat}_lag1"] = df[feat].shift(1)
     
     # Create future targets (shift negative = look ahead)
