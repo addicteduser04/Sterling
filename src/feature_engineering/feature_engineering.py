@@ -1,15 +1,9 @@
-"""
-Feature engineering with lags for time series prediction.
 
-Logic:
-- Features at time t: all variables lagged by 1 month (t-1)
-- Targets at time t: next month's values (t+1)
-- This prevents data leakage and uses only known past values as inputs
-"""
 
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from merge_data import merge_data
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_PATH = ROOT / "data" / "feature_engineering" / "data.csv"
@@ -68,7 +62,7 @@ def build_lagged_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def main() -> None:
     # Load preprocessed data
-    df = pd.read_csv(DATA_PATH, index_col=0)
+    df = merge_data()
     print(f"Loaded data shape: {df.shape}")
     print(f"Date range: {df.index[0]} to {df.index[-1]}")
     

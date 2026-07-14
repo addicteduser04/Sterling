@@ -8,7 +8,7 @@ class DataCollector(ABC):
         pass
 
 class RatesCollector(DataCollector):
-    def __init__(self,file_path = "./data/TAUX/processed/taux_bam_monthly.csv"):
+    def __init__(self,file_path = "./data/preprocessed/taux_bam_monthly.csv"):
         self.file_path = file_path
     def collect_data(self):
         data = pd.read_csv(self.file_path)
@@ -18,7 +18,7 @@ class RatesCollector(DataCollector):
         return data
     
 class TauxDirecteurCollector(DataCollector):
-    def __init__(self,file_path = "./data/taux_directeur/taux_directeur_preprocessed.csv"):
+    def __init__(self,file_path = "./data/preprocessed/taux_directeur_preprocessed.csv"):
         self.file_path = file_path
     def collect_data(self):
         data = pd.read_csv(self.file_path)
@@ -28,7 +28,7 @@ class TauxDirecteurCollector(DataCollector):
         return data
     
 class CPICollector(DataCollector):
-    def __init__(self,file_path="./data/IPC/CPI.csv"):
+    def __init__(self,file_path="./data/preprocessed/CPI.csv"):
         self.file_path = file_path
     def collect_data(self):
         data = pd.read_csv(self.file_path)
@@ -37,18 +37,9 @@ class CPICollector(DataCollector):
         print(data.head())
         return data
     
-class GDPCollector(DataCollector):
-    def __init__(self,file_path="./data/PIB/PIB.csv"):
-        self.file_path = file_path
-    def collect_data(self):
-        data = pd.read_csv(self.file_path)
-        if data.empty:
-            print("The PIB data is empty.")
-        print(data.head())
-        return data
     
 class EuroRatesCollector(DataCollector):
-    def __init__(self,file_path="./data/taux_europe/ECB Data Portal Monthly.csv"):
+    def __init__(self,file_path="./data/preprocessed/ECB Data Portal Monthly.csv"):
         self.file_path = file_path
     def collect_data(self):
         data = pd.read_csv(self.file_path)
@@ -59,7 +50,7 @@ class EuroRatesCollector(DataCollector):
     
 class BetaCollector(DataCollector):
     #file path is default to bam betas, specify path for ecb
-    def __init__(self,file_path="./data/betas/bam/betas_nelson_siegel_bam.csv"):
+    def __init__(self,file_path="./data/preprocessed/betas_nelson_siegel_bam.csv"):
         self.file_path = file_path
     def collect_data(self):
         data = pd.read_csv(self.file_path)

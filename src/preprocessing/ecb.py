@@ -24,9 +24,9 @@ def preprocess_ecb(yields = YIELDS ,date_df = date):
         rate = data.iloc[:, 2]
         yield_df[yields] = rate
     yield_df = yield_df.set_index('Date')
-    yield_df.to_csv('./data/taux_europe/ECB Data Portal 2004.csv')
+    yield_df.to_csv('./data/preprocessed/ECB Data Portal 2004.csv')
     yield_df = to_monthly_mean(yield_df)
-    yield_df.to_csv("./data/taux_europe/ECB Data Portal Monthly.csv", index=True)
+    yield_df.to_csv("./data/preprocessed/ECB Data Portal Monthly.csv", index=True)
     return yield_df
 
 #export preprocess_ecb

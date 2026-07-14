@@ -24,7 +24,7 @@ def preprocess_cpi(file_path):
     data = data.sort_values(by="Date", ascending=True, ignore_index=True)
     data = data[columns]
     print(data)
-    data.to_csv("~/data/IPC/CPI.csv", index=True)
+    data.to_csv("~/data/preprocessed/CPI.csv", index=True)
     return data
 
 #export preprocess_cpi

@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RAW_PATH = ROOT / "data" / "TAUX" / "raw" / "Data.xlsm"
 DAILY_OUTPUT_PATH = ROOT / "data" / "TAUX" / "processed" / "taux_bam.csv"
 MONTHLY_OUTPUT_PATH = ROOT / "data" / "TAUX" / "processed" / "taux_bam_monthly.csv"
-
+raw_df = pd.read_excel(RAW_PATH)
 YIELDS = [
     "3M", "6M", "1Y", "2Y", "3Y", "4Y", "5Y", "6Y", "7Y", "8Y", "9Y",
     "10Y", "11Y", "12Y", "13Y", "14Y", "15Y", "16Y", "17Y", "18Y", "19Y",
@@ -62,7 +62,7 @@ def to_monthly_mean(df: pd.DataFrame) -> pd.DataFrame:
     return monthly
 
 
-def build_standardized_curve(raw_df: pd.DataFrame) -> pd.DataFrame:
+def build_standardized_curve(raw_df = raw_df) -> pd.DataFrame:
     """Rename existing columns and interpolate missing tenors linearly by maturity."""
     df = raw_df.copy()
     df = df.rename(columns={col: RAW_COLUMN_MAP[col] for col in RAW_COLUMN_MAP if col in df.columns})

@@ -13,7 +13,7 @@ def extraire_taux_directeur(data : pd.Series):
 input = Path("../data/taux_directeur/taux_directeur.csv")
 
 
-def preprocess_td(file_path):
+def preprocess_td(file_path = input):
     monthly_index = pd.date_range(start='2007-01-01', end='2026-06-01', freq='MS')
     df = pd.DataFrame(index=monthly_index)
 
@@ -35,6 +35,6 @@ def preprocess_td(file_path):
         how='left')
     df['Taux directeur'] = df['Taux directeur'].ffill()
 
-    df.to_csv("./data/taux_directeur/taux_directeur_preprocessed.csv")
+    df.to_csv("./data/preprocessed/taux_directeur_preprocessed.csv")
     
     return df

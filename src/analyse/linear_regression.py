@@ -1,9 +1,11 @@
+"""
 import pandas as pd 
 from sklearn.linear_model import LinearRegression
+from feature_engineering.feature_engineering import build_lagged_dataset
+from feature_engineering.merge_data import merge_data
 
-
-X = pd.read_csv("./../data/feature_engineering/X.csv", index_col=0)
-y = pd.read_csv("./../data/feature_engineering/y.csv", index_col=0)
+df = merge_data()
+X,y = build_lagged_dataset(df)
 
 resultats =[]
 
@@ -26,3 +28,9 @@ df_resultats = pd.DataFrame(resultats)
 
 print(df_resultats)
 df_resultats.to_csv("./../data/analysis_results/linear_regression_results.csv", index=False)
+
+"""
+
+import pkgutil
+for module in pkgutil.iter_modules():
+    print(module.name)
