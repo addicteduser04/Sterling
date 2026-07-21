@@ -1,8 +1,13 @@
-"""
+import sys
+import os
+
+# Adds the 'src' directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import pandas as pd 
 from sklearn.linear_model import LinearRegression
-from feature_engineering.feature_engineering import build_lagged_dataset
-from feature_engineering.merge_data import merge_data
+from feature_engineering.feature import build_lagged_dataset
+from feature_engineering.merge import merge_data
 
 df = merge_data()
 X,y = build_lagged_dataset(df)
@@ -27,10 +32,7 @@ for cible in y.columns:
 df_resultats = pd.DataFrame(resultats)
 
 print(df_resultats)
-df_resultats.to_csv("./../data/analysis_results/linear_regression_results.csv", index=False)
+df_resultats.to_csv("./data/analysis_results/linear_regression_results.csv", index=False)
 
-"""
 
-import pkgutil
-for module in pkgutil.iter_modules():
-    print(module.name)
+

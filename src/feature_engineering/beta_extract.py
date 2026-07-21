@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Adds the 'src' directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 import pandas as pd
 import numpy as np
 from scipy.optimize import minimize
@@ -57,11 +64,11 @@ def fit_ns_single_date(yields_row, maturities, lam_grid=None):
                          'beta2': np.nan, 'lambda': np.nan, 'rmse': np.nan})
     
     return pd.Series({
-        'beta0': best_params[0],
-        'beta1': best_params[1],
-        'beta2': best_params[2],
-        'lambda': best_params[3],
-        'rmse':   best_params[4]
+        'beta0': round(best_params[0],2),
+        'beta1': round(best_params[1],2),
+        'beta2': round(best_params[2],2),
+        'lambda': round(best_params[3],2),
+        'rmse':   round(best_params[4],2)
     })
 
 def fit_ns_panel(df):
@@ -105,3 +112,5 @@ def calculate_and_save_betas(collector_class, output_path):
     print(f"Dates avec fit échoué : {betas['beta0'].isna().sum()}")
     return betas
 
+output = "./data/preprocessed/betas_nelson_siegel_ecb.csv"
+beta = calculate_and_save_betas(EuroRatesCollector,output)

@@ -1,11 +1,16 @@
+import sys
+import os
+
+# Adds the 'src' directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import pandas as pd 
 from scipy.stats import pearsonr
 
-from feature_engineering.feature_engineering import build_lagged_dataset
-from feature_engineering.merge_data import merge_data
+from feature_engineering import feature, merge
 
-df = merge_data()
-X,y = build_lagged_dataset(df)
+df = merge.merge_data()
+X,y = feature.build_lagged_dataset(df)
 
 def load_data(file_path):
     data = pd.read_csv(file_path, index_col=0)
@@ -23,5 +28,5 @@ def calculate_correlation(features =X, cibles =y):
     return df_resultats
 
 df_results = calculate_correlation(X, y)
-df_results.to_csv("./../data/analysis_results/correlation_results.csv", index=False)
+df_results.to_csv("./data/analysis_results/correlation_results.csv", index=False)
 print(df_results.head())

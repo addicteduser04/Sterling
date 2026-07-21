@@ -19,12 +19,11 @@ beta_ecb_data = load_data(BetaCollector(file_path="./data/preprocessed/betas_nel
 beta_ecb_data.columns = ['Date', 'europe_beta0', 'europe_beta1', 'europe_beta2', 'europe_lambda', 'europe_rmse']
 
 def merge_data(x = beta_bam_data, y = beta_ecb_data , z = cpi_data, t = taux_directeur_data):
-    df_master = pd.merge(x, t, on='Date', how='left').dropna()
-    df_master = pd.merge(df_master, z, on='Date', how='left').dropna()
-    df_master = pd.merge(df_master, y, on='Date', how='left').dropna()
+    df_master = pd.merge(x, y, on='Date', how='left').dropna()
+    #df_master = pd.merge(df_master, z, on='Date', how='left').dropna()
+    #df_master = pd.merge(df_master, t, on='Date', how='left').dropna()
     print(df_master.columns)
-
     df_master.to_csv("./data/feature_engineering/merged_data.csv", index=False)
-    df_master = df_master.drop(columns = ['lambda','rmse','europe_lambda','europe_rmse'])
+    df_master = df_master.drop(columns = ['rmse','europe_rmse'])
     df_master.to_csv("./data/feature_engineering/merged_data_cleaned.csv", index=False)
     return df_master

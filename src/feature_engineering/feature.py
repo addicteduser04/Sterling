@@ -1,9 +1,13 @@
+import sys
+import os
 
+# Adds the 'src' directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from merge_data import merge_data
+from feature_engineering.merge import merge_data
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_PATH = ROOT / "data" / "feature_engineering" / "data.csv"
@@ -15,15 +19,17 @@ BASE_FEATURES = [
     "beta0",
     "beta1",
     "beta2",
-    "Taux directeur",
-    "IPC",
+    'lambda',
     "europe_beta0",
     "europe_beta1",
     "europe_beta2",
+    'europe_lambda'
 ]
-
+#    "Taux directeur",
+#    "IPC",
+#a ajouter dans base features
 # Target variables to predict (next month's values)
-TARGET_VARS = ["beta0", "beta1", "beta2"]
+TARGET_VARS = ["beta0", "beta1", "beta2",'lambda']
 
 
 def build_lagged_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -76,10 +82,9 @@ def main() -> None:
     
     print("\nTargets (first 5 rows):")
     print(y.head())
-    
     # Save to CSV
-    X.to_csv(OUTPUT_FEATURES_PATH, index=True)
-    y.to_csv(OUTPUT_TARGETS_PATH, index=True)
+    X.to_csv(OUTPUT_FEATURES_PATH, index = False)
+    y.to_csv(OUTPUT_TARGETS_PATH, index = False)
     
     print(f"\nFeatures saved to: {OUTPUT_FEATURES_PATH.name}")
     print(f"Targets saved to: {OUTPUT_TARGETS_PATH.name}")
