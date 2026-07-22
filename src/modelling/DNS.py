@@ -1,9 +1,8 @@
 from pathlib import Path
 import re
-
 import numpy as np
 import pandas as pd
-
+from scipy.optimize import minimize
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_PATH = ROOT_DIR / "data" / "masi" / "bam_ecb_2004.csv"
@@ -12,137 +11,226 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def parse_maturity(column_name: str) -> float:
-    """Convert a maturity label such as '3M_y' or '10Y_y' into years."""
-    match = re.match(r"^(\d+)([MY])(?:_y)?$", column_name)
+    """Convertit '3M_x' ou '10Y_y' en années."""
+    match = re.match(r"^(\d+)([MY])(?:_[xy])?$", column_name)
     if not match:
-        raise ValueError(f"Unsupported maturity column: {column_name}")
-
+        raise ValueError(f"Colonne non reconnue : {column_name}")
     value = float(match.group(1))
     unit = match.group(2)
     return value / 12.0 if unit == "M" else value
 
 
-def nelson_siegel_loadings(maturities, lambda_val: float = 0.0609) -> np.ndarray:
-    """Create the Nelson-Siegel loading matrix for a set of maturities."""
-    maturities = np.asarray(maturities, dtype=float)
-    term1 = np.where(
-        maturities == 0,
-        1.0,
-        (1.0 - np.exp(-lambda_val * maturities)) / (lambda_val * maturities),
-    )
-    term2 = term1 - np.exp(-lambda_val * maturities)
-    return np.column_stack([np.ones_like(maturities), term1, term2])
+def nelson_siegel_loadings(maturities: np.ndarray, lambda_val: float) -> np.ndarray:
+    """Matrice de design NS (n_maturities × 3)."""
+    m = np.asarray(maturities, dtype=float)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        term2 = np.where(m == 0, 1.0, (1 - np.exp(-m / lambda_val)) / (m / lambda_val))
+    term3 = term2 - np.exp(-m / lambda_val)
+    return np.column_stack([np.ones_like(m), term2, term3])
 
 
-def fit_dynamic_nelson_siegel_kalman(
-    yield_curve: pd.DataFrame,
-    maturities=None,
-    lambda_val: float = 0.0609,
-    process_noise: float = 1e-3,
-    observation_noise: float = 1e-2,
-    forecast_horizon: int = 0,
-):
-    """Estimate dynamic Nelson-Siegel factors with a simple Kalman filter."""
-    if maturities is None:
-        maturities = [parse_maturity(column) for column in yield_curve.columns]
+def kalman_filter(yields: np.ndarray, Lambda: np.ndarray,
+                  A: np.ndarray, mu: np.ndarray,
+                  Q: np.ndarray, H: np.ndarray):
+    """
+    Kalman filter complet.
+    
+    yields  : (T × n_maturities)
+    Lambda  : (n_maturities × 3) matrice de design NS
+    A       : (3 × 3) matrice de transition VAR(1)
+    mu      : (3,) vecteur de moyenne long terme
+    Q       : (3 × 3) covariance bruit de processus
+    H       : (n_maturities × n_maturities) covariance bruit d'observation
+    
+    Retourne :
+    filtered_states : (T × 3) betas filtrés
+    log_likelihood  : float
+    """
+    T = yields.shape[0]
+    n_factors = 3
 
-    design_matrix = nelson_siegel_loadings(maturities, lambda_val=lambda_val)
+    # Initialisation — moyenne inconditionnelle et covariance stationnaire
+    state_mean = mu.copy()
+    state_cov = np.eye(n_factors) * 1.0
 
-    n_steps = len(yield_curve)
-    n_factors = design_matrix.shape[1]
-    state_mean = np.zeros(n_factors)
-    state_cov = np.eye(n_factors)
+    filtered_states = np.zeros((T, n_factors))
+    log_likelihood = 0.0
 
-    filtered_states = np.zeros((n_steps, n_factors))
-    filtered_covariances = np.zeros((n_steps, n_factors, n_factors))
+    for t in range(T):
+        obs = yields[t]
+        valid = ~np.isnan(obs)
 
-    for idx, row in enumerate(yield_curve.itertuples(index=False, name=None)):
-        obs = np.asarray(row, dtype=float)
-        valid_mask = ~np.isnan(obs)
-        if not np.any(valid_mask):
+        if not np.any(valid):
+            filtered_states[t] = state_mean
             continue
 
-        design = design_matrix[valid_mask]
-        obs_valid = obs[valid_mask]
-        obs_cov = np.eye(int(valid_mask.sum())) * observation_noise
+        L = Lambda[valid]
+        y = obs[valid]
+        H_t = H[np.ix_(valid, valid)]
 
-        pred_state = state_mean
-        pred_cov = state_cov + np.eye(n_factors) * process_noise
+        # ── Prédiction ──
+        pred_mean = A @ state_mean + mu
+        pred_cov  = A @ state_cov @ A.T + Q
 
-        innovation = obs_valid - design @ pred_state
-        innovation_cov = design @ pred_cov @ design.T + obs_cov
-        kalman_gain = pred_cov @ design.T @ np.linalg.pinv(innovation_cov)
+        # ── Innovation ──
+        innovation     = y - L @ pred_mean
+        innovation_cov = L @ pred_cov @ L.T + H_t
 
-        state_mean = pred_state + kalman_gain @ innovation
-        state_cov = (np.eye(n_factors) - kalman_gain @ design) @ pred_cov
+        # ── Log-vraisemblance ──
+        try:
+            sign, logdet = np.linalg.slogdet(innovation_cov)
+            if sign <= 0:
+                log_likelihood -= 1e10
+            else:
+                log_likelihood -= 0.5 * (
+                    len(y) * np.log(2 * np.pi)
+                    + logdet
+                    + innovation @ np.linalg.solve(innovation_cov, innovation)
+                )
+        except np.linalg.LinAlgError:
+            log_likelihood -= 1e10
 
-        filtered_states[idx] = state_mean
-        filtered_covariances[idx] = state_cov
+        # ── Gain de Kalman ──
+        K = pred_cov @ L.T @ np.linalg.pinv(innovation_cov)
 
-    beta_df = pd.DataFrame(filtered_states, index=yield_curve.index, columns=["beta0", "beta1", "beta2"])
-    fitted_yields = beta_df.to_numpy() @ design_matrix.T
-    fitted_yields_df = pd.DataFrame(fitted_yields, index=yield_curve.index, columns=yield_curve.columns)
+        # ── Mise à jour ──
+        state_mean = pred_mean + K @ innovation
+        state_cov  = (np.eye(n_factors) - K @ L) @ pred_cov
 
-    forecast_df = None
-    if forecast_horizon > 0:
-        forecast_states = np.zeros((forecast_horizon, n_factors))
-        forecast_cov = state_cov
-        state_forecast = state_mean
-        for step in range(forecast_horizon):
-            state_forecast = state_forecast
-            forecast_cov = forecast_cov + np.eye(n_factors) * process_noise
-            forecast_states[step] = state_forecast
+        filtered_states[t] = state_mean
 
-        forecast_df = pd.DataFrame(forecast_states, columns=["beta0", "beta1", "beta2"])
-        forecast_yields = forecast_df.to_numpy() @ design_matrix.T
-        forecast_yields_df = pd.DataFrame(forecast_yields, columns=yield_curve.columns)
-        return {
-            "betas": beta_df,
-            "fitted_yields": fitted_yields_df,
-            "forecast_betas": forecast_df,
-            "forecast_yields": forecast_yields_df,
-        }
-
-    return {"betas": beta_df, "fitted_yields": fitted_yields_df}
+    return filtered_states, log_likelihood
 
 
-def load_yield_curve_data(path: Path = DATA_PATH) -> pd.DataFrame:
-    """Load the ECB daily yield curve data and keep the yield columns only."""
+def estimate_parameters(yields: np.ndarray, maturities: np.ndarray,
+                        lambda_val: float = 0.0609):
+    """
+    Estimer A, mu, Q, H par maximum de vraisemblance.
+    λ fixé (grid search possible séparément).
+    """
+    Lambda = nelson_siegel_loadings(maturities, lambda_val)
+    n_obs = yields.shape[1]
+
+    def neg_log_likelihood(params):
+        # Décomposer le vecteur de paramètres
+        mu = params[:3]
+        # A diagonal pour parcimonie
+        a_diag = np.clip(params[3:6], -0.999, 0.999)
+        A = np.diag(a_diag)
+        # Q et H diagonaux, log-paramétrés pour garantir positivité
+        log_q = params[6:9]
+        log_h = params[9]
+        Q = np.diag(np.exp(log_q))
+        H = np.eye(n_obs) * np.exp(log_h)
+
+        _, ll = kalman_filter(yields, Lambda, A, mu, Q, H)
+        return -ll
+
+    # Initialisation
+    x0 = np.zeros(10)
+    x0[:3]  = np.nanmean(yields, axis=0)[:3] if yields.shape[1] >= 3 else 0
+    x0[3:6] = [0.95, 0.90, 0.85]   # persistance initiale des betas
+    x0[6:9] = [np.log(1e-4)] * 3   # log process noise
+    x0[9]   = np.log(1e-3)          # log observation noise
+
+    result = minimize(
+        neg_log_likelihood,
+        x0,
+        method='L-BFGS-B',
+        options={'maxiter': 500, 'ftol': 1e-9}
+    )
+
+    params = result.x
+    mu_hat    = params[:3]
+    A_hat     = np.diag(np.clip(params[3:6], -0.999, 0.999))
+    Q_hat     = np.diag(np.exp(params[6:9]))
+    H_hat     = np.eye(n_obs) * np.exp(params[9])
+
+    print(f"Optimisation convergée : {result.success}")
+    print(f"Log-vraisemblance : {-result.fun:.4f}")
+    print(f"mu  : {mu_hat}")
+    print(f"A (diag) : {np.diag(A_hat)}")
+
+    return mu_hat, A_hat, Q_hat, H_hat
+
+
+def forecast_betas(last_state: np.ndarray, A: np.ndarray,
+                   mu: np.ndarray, horizon: int) -> np.ndarray:
+    """
+    Prévision des betas sur `horizon` pas en avant.
+    Retourne (horizon × 3).
+    """
+    forecasts = np.zeros((horizon, 3))
+    state = last_state.copy()
+    for h in range(horizon):
+        state = A @ state + mu
+        forecasts[h] = state
+    return forecasts
+
+
+def load_yield_curve(path: Path = DATA_PATH) -> pd.DataFrame:
+    """Charger les taux BAM (colonnes _x)."""
     df = pd.read_csv(path, index_col=0)
     if "Date" in df.columns:
         df = df.set_index("Date")
 
-    yield_columns = [column for column in df.columns if column.endswith("_y")]
-    if not yield_columns:
-        raise ValueError("No yield columns ending with '_y' were found in the input data.")
+    cols = [c for c in df.columns if c.endswith("_x")]
+    if not cols:
+        raise ValueError("Aucune colonne BAM (_x) trouvée.")
 
-    yield_curve = df[yield_columns].copy()
-    yield_curve.index = pd.to_datetime(yield_curve.index)
-    yield_curve = yield_curve.sort_index()
-    yield_curve = yield_curve.apply(pd.to_numeric, errors="coerce")
-    yield_curve = yield_curve.dropna(how="all")
-    return yield_curve
+    yc = df[cols].copy()
+    yc.index = pd.to_datetime(yc.index)
+    yc = yc.sort_index()
+    yc = yc.apply(pd.to_numeric, errors="coerce")
+    yc = yc.dropna(how="all")
+    return yc
 
 
-def main() -> None:
-    yield_curve = load_yield_curve_data(DATA_PATH)
-    maturities = [parse_maturity(column) for column in yield_curve.columns]
+def main():
+    # ── 1. Charger les données ──
+    yield_curve = load_yield_curve(DATA_PATH)
+    maturities  = np.array([parse_maturity(c) for c in yield_curve.columns])
+    yields_arr  = yield_curve.values
 
-    results = fit_dynamic_nelson_siegel_kalman(
-        yield_curve=yield_curve,
-        maturities=maturities,
-        lambda_val=0.0609,
-        forecast_horizon=6,
+    print(f"Données chargées : {yield_curve.shape[0]} jours, {yield_curve.shape[1]} maturités")
+
+    # ── 2. Estimer les paramètres par MLE ──
+    print("\nEstimation des paramètres par maximum de vraisemblance...")
+    mu, A, Q, H = estimate_parameters(yields_arr, maturities, lambda_val=0.0609)
+
+    # ── 3. Kalman filter sur tout le panel ──
+    Lambda = nelson_siegel_loadings(maturities, lambda_val=0.0609)
+    filtered_states, ll = kalman_filter(yields_arr, Lambda, A, mu, Q, H)
+
+    beta_df = pd.DataFrame(
+        filtered_states,
+        index=yield_curve.index,
+        columns=["beta0", "beta1", "beta2"]
     )
 
-    results["betas"].to_csv(OUTPUT_DIR / "dns_kalman_betas.csv")
-    results["fitted_yields"].to_csv(OUTPUT_DIR / "dns_kalman_fitted_yields.csv")
-    if "forecast_betas" in results:
-        results["forecast_betas"].to_csv(OUTPUT_DIR / "dns_kalman_forecast_betas.csv")
-        results["forecast_yields"].to_csv(OUTPUT_DIR / "dns_kalman_forecast_yields.csv")
+    # ── 4. Fitted yields ──
+    fitted = filtered_states @ Lambda.T
+    fitted_df = pd.DataFrame(fitted, index=yield_curve.index, columns=yield_curve.columns)
 
-    print("Dynamic Nelson-Siegel + Kalman Filter completed successfully.")
-    print(results["betas"].head())
+    # ── 5. RMSE ──
+    rmse = np.sqrt(np.nanmean((yields_arr - fitted) ** 2))
+    print(f"\nRMSE moyen : {rmse:.6f}")
+
+    # ── 6. Forecast 30 jours ──
+    last_state   = filtered_states[-1]
+    forecast_arr = forecast_betas(last_state, A, mu, horizon=30)
+    forecast_df  = pd.DataFrame(forecast_arr, columns=["beta0", "beta1", "beta2"])
+    forecast_yields = forecast_arr @ Lambda.T
+    forecast_yields_df = pd.DataFrame(forecast_yields, columns=yield_curve.columns)
+
+    # ── 7. Sauvegarder ──
+    beta_df.to_csv(OUTPUT_DIR / "dns_kalman_betas.csv")
+    fitted_df.to_csv(OUTPUT_DIR / "dns_kalman_fitted_yields.csv")
+    forecast_df.to_csv(OUTPUT_DIR / "dns_kalman_forecast_betas.csv")
+    forecast_yields_df.to_csv(OUTPUT_DIR / "dns_kalman_forecast_yields.csv")
+
+    print("\nDNS + Kalman Filter terminé.")
+    print(beta_df.tail())
 
 
 if __name__ == "__main__":

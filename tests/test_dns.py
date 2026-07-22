@@ -17,9 +17,9 @@ class TestDynamicNelsonSiegelKalman(unittest.TestCase):
     def test_kalman_filter_returns_expected_outputs(self):
         yields = pd.DataFrame(
             {
-                "3M_y": [0.02, 0.021, 0.022],
-                "6M_y": [0.025, 0.026, 0.027],
-                "1Y_y": [0.03, 0.031, 0.032],
+                "3M_x": [0.02, 0.021, 0.022],
+                "6M_x": [0.025, 0.026, 0.027],
+                "1Y_x": [0.03, 0.031, 0.032],
             },
             index=pd.date_range("2024-01-01", periods=3, freq="MS"),
         )
