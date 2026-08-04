@@ -1,0 +1,229 @@
+{
+  "methodology": {
+    "internal_rate_unit": "decimal (0.035 = 3.5 percent)",
+    "csv_output_unit": "decimal",
+    "plot_unit": "percentage points (internal values multiplied by 100)",
+    "backtest": "expanding window; all parameters re-estimated before each origin",
+    "horizon": "22 prochaines publications du panel, pas un mois calendaire fixe",
+    "decay_convention": "exp(-tau/decay_time), tau and decay_time in years",
+    "base_full_bam_calendar": false,
+    "comparison_calendar": "same aligned BAM-ECB dates for both compared models",
+    "primary_evaluation": "nine actually observed BAM maturities"
+  },
+  "windows": {
+    "base_full": 53,
+    "base_aligned": 53,
+    "bam_plus_ecb": 53,
+    "strictly_common": 53
+  },
+  "mean_rmse_observed": {
+    "base_full": 0.0012571239533759463,
+    "base_aligned": 0.0012571239533759463,
+    "bam_plus_ecb": 0.0012516018819816281,
+    "persistence_common": 0.0010438064226687717
+  },
+  "diebold_mariano": {
+    "base_aligned_vs_persistence": {
+      "statistic": Infinity,
+      "p_value": 0.0,
+      "mean_loss_difference": 3.230354696569813e-07
+    },
+    "bam_plus_ecb_vs_persistence": {
+      "statistic": Infinity,
+      "p_value": 0.0,
+      "mean_loss_difference": 3.170696540647809e-07
+    },
+    "bam_plus_ecb_vs_base_aligned": {
+      "statistic": -Infinity,
+      "p_value": 0.0,
+      "mean_loss_difference": -5.965815592200441e-09
+    }
+  },
+  "final_models": {
+    "base": {
+      "decay_time_years": 8.0,
+      "condition_number": 29.406915578710315,
+      "long_run_mean": [
+        0.050421774620154146,
+        -0.024069030293309604,
+        0.000643546025437001
+      ],
+      "kappa_per_calendar_day": [
+        0.006742523305910923,
+        0.003866083111042898,
+        0.004637250071810164
+      ],
+      "diffusion_cov": [
+        [
+          1.5115079409853122e-06,
+          -1.3869855266661612e-06,
+          -2.7689802497711874e-06
+        ],
+        [
+          -1.3869855266661612e-06,
+          1.3697913684311015e-06,
+          2.464675227145289e-06
+        ],
+        [
+          -2.7689802497711874e-06,
+          2.4646752271452894e-06,
+          6.071794882934317e-06
+        ]
+      ],
+      "measurement_variances": [
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1.1068574800373201e-06,
+        1.8533280999452183e-06,
+        1.5335772407360848e-06
+      ]
+    },
+    "bam_in_enriched_model": {
+      "decay_time_years": 8.0,
+      "condition_number": 29.406915578710315,
+      "long_run_mean": [
+        0.050421774620154146,
+        -0.024069030293309604,
+        0.000643546025437001
+      ],
+      "kappa_per_calendar_day": [
+        0.006742523305910923,
+        0.003866083111042898,
+        0.004637250071810164
+      ],
+      "diffusion_cov": [
+        [
+          1.5115079409853122e-06,
+          -1.3869855266661612e-06,
+          -2.7689802497711874e-06
+        ],
+        [
+          -1.3869855266661612e-06,
+          1.3697913684311015e-06,
+          2.464675227145289e-06
+        ],
+        [
+          -2.7689802497711874e-06,
+          2.4646752271452894e-06,
+          6.071794882934317e-06
+        ]
+      ],
+      "measurement_variances": [
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1.1068574800373201e-06,
+        1.8533280999452183e-06,
+        1.5335772407360848e-06
+      ]
+    },
+    "ecb": {
+      "decay_time_years": 2.47674129955623,
+      "condition_number": 15.380927185992556,
+      "long_run_mean": [
+        0.017045853564675584,
+        0.0041209005921164716,
+        -0.02068733537425316
+      ],
+      "kappa_per_calendar_day": [
+        0.0003032508785041506,
+        4.5169406349222195e-05,
+        0.0034431747022894404
+      ],
+      "diffusion_cov": [
+        [
+          2.2253927066667656e-07,
+          -2.0960892148082623e-07,
+          -1.647515998068353e-07
+        ],
+        [
+          -2.0960892148082623e-07,
+          2.538837012632375e-07,
+          5.450371835462102e-08
+        ],
+        [
+          -1.6475159980683527e-07,
+          5.4503718354621016e-08,
+          1.639146710384399e-06
+        ]
+      ],
+      "measurement_variances": [
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        1e-06,
+        3.362618154157954e-06
+      ]
+    },
+    "ecb_influence": [
+      [
+        1.3390132114847754e-05,
+        -1.4812924005048404e-05,
+        1.2865490591608807e-05
+      ],
+      [
+        -3.1928013376543135e-05,
+        3.329096754381752e-05,
+        -1.209452021672317e-05
+      ],
+      [
+        -8.611603727475072e-05,
+        7.72534834078432e-05,
+        -3.7030936050276477e-06
+      ]
+    ]
+  }
+}
