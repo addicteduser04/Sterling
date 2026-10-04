@@ -599,7 +599,7 @@ yield link and leakage risk before any macro-augmented backtest.
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bam-data", default="data/masi/bam_ecb_2004.csv")
+    parser.add_argument("--bam-data", default="data/combined/bam_ecb_2004.csv")
     parser.add_argument("--bam-unit", choices=dns.VALID_RATE_UNITS, default="percent")
     parser.add_argument("--phase1-dir", default="outputs_phase1")
     parser.add_argument("--output-dir", default="outputs_phase2")

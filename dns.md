@@ -26,21 +26,21 @@ windows. For the monthly experiment they are 0 at J+5/J+10 and 1 at J+22.
 
 ```bash
 python src/modelling/dns.py \
-  --combined-data data/masi/bam_ecb_2004.csv \
+  --combined-data data/combined/bam_ecb_2004.csv \
   --bam-unit percent --ecb-unit percent \
   --output-dir outputs_dns
 
 python -m src.modelling.phase1 \
-  --bam-data data/masi/bam_ecb_2004.csv \
+  --bam-data data/combined/bam_ecb_2004.csv \
   --bam-unit percent --output-dir outputs_phase1
 
 python -m src.modelling.phase2 \
-  --bam-data data/masi/bam_ecb_2004.csv \
+  --bam-data data/combined/bam_ecb_2004.csv \
   --bam-unit percent --phase1-dir outputs_phase1 \
   --output-dir outputs_phase2
 ```
 
-The legacy `data/masi/bam_ecb_2004.csv` stores both BAM and ECB inputs in
+The legacy `data/combined/bam_ecb_2004.csv` stores both BAM and ECB inputs in
 percentage points, hence the explicit `percent` arguments above.
 
 ## Validated results
@@ -51,5 +51,7 @@ percentage points, hence the explicit `percent` arguments above.
   weekly robustness results.
 
 The current evidence does not establish a statistically robust aggregate
-improvement over persistence. See `outputs_phase2/phase2_report.md` for the
+improvement over persistence. See [the saved Phase 2 report](docs/PHASE2_RESULTS.md) for the
 latest scientific conclusion.
+
+Generated output directories are ignored by Git and can be recreated locally. Saved research reports and selected presentation figures are kept in `docs/`.

@@ -1,4 +1,45 @@
-myenv
-TAUX/raw
+# Python environments, bytecode, and tool caches
+/myenv/
+/.venv/
+/venv/
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local tests and exploratory work (preserved locally)
+/tests/
+/scratch/
+/scratches/
+/experiments/
+/notebooks/scratch/
+.ipynb_checkpoints/
+*.log
+*.tmp
+*.bak
+
+# Regenerable experiment outputs; presentation assets live in docs/assets
+/outputs_*/
+
+# Bulky source archives and derived data; keep CSV inputs and provenance
+/data/bam_weekly/raw/*.pdf
+/data/IPC/*.xlsx
+/data/TAUX/raw/*.xlsm
+/data/**/processed/
+/data/processed/
+
+# Local configuration, credentials, editor and OS files
+.env
+.env.*
+!.env.example
+/.agents/
+/.codex/
+/.aws/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

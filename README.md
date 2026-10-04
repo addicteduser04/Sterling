@@ -1,90 +1,70 @@
-# Modélisation de Nelson–Siegel
+# Sterling — Yield Curve Forecasting
 
-A quantitative finance research that aims to predict the 3 parameters of the Nelsen-Siegel beta0, beta1, and beta2 using Time Series models, Machine Learning and Deep Learning.
+Quantitative finance research on forecasting Moroccan sovereign yield curves with Nelson–Siegel factors, Kalman filtering, regularized time-series models, and XGBoost. Cross-market experiments compare Morocco (Bank Al-Maghrib), euro-area AAA curves (ECB), and U.S. Treasury yields.
 
-## DNS–Kalman rate units
+The central question is whether these models improve on persistence and simple mean reversion when evaluated without future information.
 
-`src/modelling/dns.py` uses one internal convention: every BAM and ECB yield is
-a decimal rate (`0.035` means 3.5%). Unit conversion is explicit and occurs
-once, immediately after CSV loading and before interpolation, merging, factor
-extraction, calibration, forecasting, or evaluation:
+## Selected findings
 
-- `--bam-unit decimal` is the default and leaves BAM unchanged;
-- `--ecb-unit percent` is the default and divides ECB values by 100;
-- plots multiply rates, rate factors, and rate errors by 100 for presentation;
-- saved factor, fitted-yield, forecast, and backtest CSV files remain decimal
-  and include a `rate_unit` column; p-values and dimensionless diagnostics are
-  never rescaled.
+The expanded BAM historical evaluation finds one-year RMSE of approximately **64.6 basis points** for publication-time DNS versus **67.1 bp** for persistence. Simple Nelson–Siegel AR(1) performs almost identically at **64.8 bp**. Longer forecasts increasingly represent equilibrium scenarios; persistence is best at the five-year horizon. Overlapping forecast windows limit statistical power, so these are research findings rather than precision pricing claims.
 
-The loader never guesses units from a rolling window. It rejects nonnumeric or
-infinite selected rates and implausible post-normalisation magnitudes while
-allowing supported missing observations and legitimate negative ECB rates.
+![Historical forecast error by horizon](docs/assets/fig_absolute_rmse_horizon.png)
 
-Run the pipeline with:
+See the [one- to five-year research report](docs/PHASE6_ONE_TO_FIVE_YEAR_YIELD_FORECASTING.md) for evaluation dates, horizon definitions, uncertainty, and limitations.
+
+## Technical work
+
+- Dynamic Nelson–Siegel calibration, Ornstein–Uhlenbeck factor dynamics, and Kalman filtering.
+- Expanding-window forecasts with origin-local factor extraction, scaling, and tuning.
+- Purged validation, persistence benchmarks, and overlap-aware Diebold–Mariano comparisons.
+- Explicit percentage-to-decimal conversion and publication-date controls for macro data.
+- Comparisons across NS/PCA ridge models, maturity-specific dynamics, XGBoost, and mean reversion.
+
+## Run locally
+
+Use Python 3.10 or later and install the dependencies in a virtual environment:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+Run the baseline DNS pipeline using the included aligned CSV, whose BAM and ECB rates are both in percentage points:
 
 ```bash
 python src/modelling/dns.py \
-  --combined-data data/masi/bam_ecb_2004.csv \
-  --bam-data data/processed/bam_observed_and_interpolated.csv \
-  --bam-unit decimal \
-  --ecb-unit percent \
+  --combined-data data/combined/bam_ecb_2004.csv \
+  --bam-unit percent --ecb-unit percent \
   --output-dir outputs_dns
 ```
 
-The checked-in legacy `data/masi/bam_ecb_2004.csv` currently contains BAM in
-percentage points too. Until that file is regenerated from decimal BAM input,
-use `--bam-unit percent` for that particular file. The standalone BAM path in
-the example is not included in every checkout; omit `--bam-data` only if using
-the aligned BAM calendar is intentional.
+This uses the aligned BAM/ECB calendar. For a standalone BAM calendar, supply your own `--bam-data` CSV and declare its units explicitly. Internal yields and exported forecasts use decimal rates; figures display percentages.
 
-## Phase 1: direct change predictability
-
-The leakage-safe Phase 1 experiment asks whether direct J+5, J+10 and J+22
-changes can beat a zero-change persistence forecast at the nine observed BAM
-maturities. It includes `NS_RIDGE`, `NS_ELASTICNET`, origin-local PCA,
-`PCA_RIDGE`, and a parsimonious `PCA_RIDGE_VAR`. PCA, feature scaling,
-hyperparameter tuning and direct targets are all rebuilt at each expanding
-forecast origin. Inner validation is purged so training targets are already
-known at the first validation origin.
+Run the direct change experiments:
 
 ```bash
 python -m src.modelling.phase1 \
-  --bam-data data/masi/bam_ecb_2004.csv \
-  --bam-unit percent \
-  --output-dir outputs_phase1
-```
+  --bam-data data/combined/bam_ecb_2004.csv \
+  --bam-unit percent --rerun-dns --output-dir outputs_phase1
 
-By default, this attaches the existing leakage-safe DNS and DNS-blend forecasts
-from `outputs_weighted/backtest_blended_bam.csv` only on exact common rows. Use
-`--rerun-dns` to recalibrate that benchmark. Outputs include long-form curve and
-factor forecasts, sample-size and PCA audits, metrics, robust DM comparisons,
-figures, a master table, and `phase1_report.md`.
-
-## Phase 2: maturity-specific and nonlinear dynamics
-
-Phase 2 audits Phase 1 DM bandwidths from actual forecast-window overlap, adds
-separate `DIRECT_RIDGE` and `DIRECT_AR` maturity models, and evaluates
-`NS_XGBOOST` and `PCA_XGBOOST` with three deliberately conservative tree
-configurations. It also runs a separate weekly-origin robustness experiment
-from 2024 onward. `DIRECT_ARIMA` is explicitly rejected because ordinary ARIMA
-assumes equally spaced observations while BAM publication dates are irregular.
-
-```bash
 python -m src.modelling.phase2 \
-  --bam-data data/masi/bam_ecb_2004.csv \
-  --bam-unit percent \
-  --phase1-dir outputs_phase1 \
+  --bam-data data/combined/bam_ecb_2004.csv \
+  --bam-unit percent --phase1-dir outputs_phase1 \
   --output-dir outputs_phase2
 ```
 
-The full command is computationally intensive because every PCA, NS and model
-fit remains origin-local. Use `--skip-weekly` only for development runs. The
-scientific report is written to `outputs_phase2/phase2_report.md`.
+These expanding-window experiments can take substantial time. `--rerun-dns` regenerates Phase 1's DNS benchmark rather than relying on a local output cache.
 
-## Phase 3A: real-time macro data audit
+## Repository guide
 
-Run `python -m src.modelling.phase3_data --project-dir . --output-dir outputs_phase3a`
-before modelling. It generates the catalogue tables, accepted policy-rate
-observations, checksums, and sample accounting. See
-`docs/PHASE3A_MACRO_DATA_AUDIT.md`; monthly series are joined by their actual
-`available_from` date, never their reference month.
+| Path | Contents |
+| --- | --- |
+| `src/modelling/` | Models, data loaders, backtests, evaluation, and report generation |
+| `docs/` | Research methodology, saved findings, and selected figures |
+| `data/` | CSV inputs and source provenance; see [data notes](data/README.md) |
+| `requirements.txt` | Runtime dependencies |
+
+Start with the [DNS methodology](dns.md), [initial experiments](docs/PHASE1_RESULTS.md), [nonlinear and maturity-specific comparisons](docs/PHASE2_RESULTS.md), and [cross-market study](docs/PHASE4_CROSS_MARKET_NELSON_SIEGEL.md). The [long-horizon validation](docs/PHASE5C0_LONG_HORIZON_VALIDATION.md) explains why simple mean reversion is an essential benchmark.
+
+Generated `outputs_*` directories, local tests, scratch work, source PDF/spreadsheet archives, environments, and caches are excluded by `.gitignore`. Saved reports retain references to generated tables; regenerate the corresponding experiments to inspect those tables. Existing local files are preserved. See [repository maintenance notes](docs/REPOSITORY_MAINTENANCE.md).
