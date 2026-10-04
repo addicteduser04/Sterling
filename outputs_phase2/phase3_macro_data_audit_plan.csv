@@ -1,8 +1,0 @@
-candidate_variable,likely_source,frequency,publication_date_requirement,revision_risk,expected_yield_relationship,leakage_risk
-BAM policy rate,Bank Al-Maghrib,event/daily,official decision date,low,short-end anchor,announcement timing
-Interbank rate,Bank Al-Maghrib monetary statistics,daily,same/next publication day,low-medium,money-market transmission,release delay
-Consumer prices,HCP Morocco,monthly,historical release timestamp,medium-high,inflation expectations,vintage revisions/base changes
-Treasury auctions,Moroccan Treasury/Bank Al-Maghrib,weekly/event,auction result timestamp,low,supply and price discovery,bid/result availability
-Bank liquidity,Bank Al-Maghrib,weekly/daily,operation publication time,medium,funding pressure,revisions and aggregation
-Government financing,Treasury bulletins,monthly,bulletin release date,medium-high,duration/supply pressure,publication lags
-MAD exchange rates,Bank Al-Maghrib,daily,fixing timestamp,low,imported inflation/conditions,same-day cutoff

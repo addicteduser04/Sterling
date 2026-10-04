@@ -1,9 +1,0 @@
-family,information_block,raw_inputs,processed_outputs,economic_role,audit_status,raw_present
-TAUX,CURVE,data/TAUX/raw/Data.xlsm,data/TAUX/processed/curves_interp(20250903).csv,target/endogenous BAM yield curve,archived processed file currently absent; raw preserved,see inventory
-IPC,MACRO_DOMESTIC_V1,data/IPC/*.csv; data/IPC/*.xlsx,data/processed/macro/hcp_cpi_observations.csv,Moroccan CPI/inflation,113/113 release dates verified; levels remain latest-revised rather than first-release vintages,see inventory
-taux_directeur,MACRO_DOMESTIC_V1,data/taux_directeur/taux_directeur.csv,data/processed/macro/bam_policy_rate_observations.csv,BAM policy decision state,accepted at date-level; percent converted once to decimal,see inventory
-taux_europe,MACRO_EXTERNAL_V1,data/taux_europe/ECB Data Portal_*.csv,data/taux_europe/ECB Data Portal 2004.csv,ECB AAA euro-area zero-coupon curve,audited external block; not domestic V1,see inventory
-interbank,MACRO_DOMESTIC_V1,data/interbank/raw/*.csv,data/interbank/processed/bam_interbank_observations.csv,BAM weighted-average interbank rate,oldest/newest 1000 preserved; 2003-10-25 to 2023-11-09 gap blocks long-sample use,see inventory
-bam_weekly,MACRO_DOMESTIC_V1 candidates,data/bam_weekly/raw/*.pdf,data/bam_weekly/processed/*.csv,liquidity/refinancing and Treasury auctions,values recovered but REFERENCE_DATE_ONLY; ineligible until release timing is verified,see inventory
-processed,mixed/legacy,not applicable,data/processed and archived data/preprocessed,legacy aligned outputs,do not reuse without availability-date audit,n/a
-metadata,provenance,data/metadata,data/metadata,catalogue and checksums,extend existing metadata; do not duplicate,see inventory

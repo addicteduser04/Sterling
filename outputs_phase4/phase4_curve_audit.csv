@@ -1,5 +1,0 @@
-market,definition,source_unit,internal_unit,first_observation,last_observation,observations,maturity_count,maturities,median_gap_days,maximum_gap_days,gaps_over_3_days,duplicate_dates,missing_cells,negative_cells,minimum_decimal_yield,maximum_decimal_yield
-BAM,BAM endogenous interpolated sovereign curve,percent in existing derived panel,decimal,2004-09-06,2026-06-18,5328,23,3M|6M|1Y|2Y|3Y|4Y|5Y|6Y|7Y|8Y|9Y|10Y|11Y|12Y|13Y|14Y|15Y|16Y|17Y|18Y|19Y|20Y|30Y,1.0,10,146,0,0,0,0.01307,0.06139
-EUROPE,ECB AAA euro-area central-government Svensson zero-coupon spot curve,percent per annum,decimal,2004-09-06,2026-06-24,5572,23,3M|6M|1Y|2Y|3Y|4Y|5Y|6Y|7Y|8Y|9Y|10Y|11Y|12Y|13Y|14Y|15Y|16Y|17Y|18Y|19Y|20Y|30Y,1.0,6,51,0,0,24056,-0.010090650000000001,0.051750290000000004
-US_CORE,US Treasury constant-maturity par yields; fixed 3M-10Y core,percent per annum,decimal,1990-01-02,2026-08-10,9154,8,3M|6M|1Y|2Y|3Y|5Y|7Y|10Y,1.0,4,287,0,0,0,0.0,0.09119999999999999
-US_EXTENDED,US Treasury constant-maturity par yields; fixed core plus 20Y/30Y,percent per annum,decimal,2006-02-09,2026-08-10,5126,10,3M|6M|1Y|2Y|3Y|5Y|7Y|10Y|20Y|30Y,1.0,4,160,0,0,0,0.0,0.056299999999999996

@@ -1,4 +1,0 @@
-horizon,n_origins,median_origin_gap_days,min_origin_gap_days,max_origin_gap_days,overlap_bandwidth,origins_overlapping_next,mean_subsequent_overlaps
-5,53,31.0,24,35,0,0,0.0
-10,53,31.0,24,35,0,0,0.0
-22,53,31.0,24,35,1,40,0.7547169811320755
