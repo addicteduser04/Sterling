@@ -1,0 +1,50 @@
+{
+  "retrieval_recorded_at": "2026-08-10",
+  "files": [
+    {
+      "path": "data/taux_directeur/taux_directeur.csv",
+      "sha256": "705c25e208392c6ea2ba688f3416cf26f5d642e7338fdad1e4d591a96f605711",
+      "parser": "parse_policy_rate",
+      "rows": 77
+    },
+    {
+      "path": "data/IPC/Indice des prix \u00e0 la consommation (Mensuel) (Base 100 2017)_2026-06-25.csv",
+      "sha256": "4cf8b214892bd46e6961a72791cdb6a47d841d0249215aa5203995430f7e7423",
+      "parser": "parse_cpi",
+      "rows": 113
+    },
+    {
+      "path": "data/metadata/hcp_cpi_release_calendar.csv",
+      "sha256": "aae2c32e01b867defea14ffa1e358fecb1bf60dfc64a9cdd900f5eaa466cb751",
+      "parser": "parse_cpi/release calendar",
+      "rows": 113
+    },
+    {
+      "path": "data/interbank/raw/bam_interbank_newest_1000_2026-08-10.csv",
+      "sha256": "ac4e4de94bc1cb1db76ab7d32777b6b24a94e908e670efb7d00dcc413e4654c3",
+      "parser": "parse_interbank_exports",
+      "rows": 1000
+    },
+    {
+      "path": "data/interbank/raw/bam_interbank_oldest_1000_2026-08-10.csv",
+      "sha256": "0caa80264ef16f2c6d231d3c36574c1bbbd6964eadc94b156abcc6e1804a5ca7",
+      "parser": "parse_interbank_exports",
+      "rows": 1000
+    }
+  ],
+  "schema": [
+    "series_id",
+    "reference_date",
+    "publication_date",
+    "available_from",
+    "value",
+    "vintage",
+    "source",
+    "frequency",
+    "unit",
+    "is_revised",
+    "timing_quality",
+    "vintage_quality",
+    "metadata"
+  ]
+}

@@ -1,0 +1,4 @@
+series_id,max_stale_days,rule
+bam_policy_rate,,administrative state carried until next decision
+hcp_cpi_headline,62.0,monthly release; invalidate after 62 days
+bam_interbank_weighted_average,7.0,daily market rate; gap is never bridged beyond seven days

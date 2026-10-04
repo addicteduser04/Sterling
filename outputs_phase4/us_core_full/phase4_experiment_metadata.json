@@ -1,0 +1,26 @@
+{
+  "market": "US_CORE",
+  "start_date": "2022-01-01",
+  "curve_start": "1990-01-02",
+  "curve_end": "2026-08-10",
+  "curve_observations": 9154,
+  "maturities": [
+    "3M",
+    "6M",
+    "1Y",
+    "2Y",
+    "3Y",
+    "5Y",
+    "7Y",
+    "10Y"
+  ],
+  "internal_unit": "decimal",
+  "seed": 42,
+  "horizons": [
+    5,
+    10,
+    22
+  ],
+  "horizon_semantics": "subsequent market observations",
+  "cross_market_predictors": false
+}

@@ -1,0 +1,17 @@
+variable,expected_yield_effect,curve_segment,expected_horizon
+BAM policy rate,Higher rate expected to lift yields most directly,short,J+5/J+10
+Reserve requirement,Tighter requirement may raise funding pressure,short,J+5/J+10
+Interbank overnight rate,Above-policy spread indicates funding pressure,short,J+5
+Central-bank liquidity injections,short,J+5/J+10,Medium due result timing
+Banking liquidity deficit,short,J+10,High if backdated
+Headline CPI index,Higher inflation may lift nominal yields,medium/long,J+10/J+22
+Core inflation,Persistent inflation may lift longer yields,medium/long,J+22
+Treasury auction results,all,J+5/J+10,High if auction date substitutes release date
+Government financing needs,long,J+22,High
+M3 money supply,all,J+22,High if backdated
+Bank credit growth,medium/long,J+22,High if backdated
+EUR/MAD reference rate,medium/long,J+10/J+22,Low for next-day origins; medium same-day
+USD/MAD reference rate,medium/long,J+10/J+22,Low for next-day origins; medium same-day
+ECB deposit facility rate,all,J+10/J+22,Low with timestamp
+German 10-year sovereign yield,long,J+22,Medium same-day cutoff
+Brent crude oil,long,J+22,Medium due revisions/release

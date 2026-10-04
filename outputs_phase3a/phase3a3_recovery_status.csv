@@ -1,0 +1,6 @@
+series_id,accepted_timing,timing_quality,vintage_quality,coverage,unresolved_issue
+bam_policy_rate,True,VERIFIED_DATE,UNREVISED_ADMIN,2006-12-19 to 2026-03-19,intraday decision time absent
+hcp_cpi_headline,True,VERIFIED_DATE,LATEST_REVISED,2017-01 to 2026-05; 113/113 release dates,first-release values/vintages not preserved
+bam_interbank_weighted_average,True,CONSERVATIVE_NEXT_ORIGIN,UNKNOWN,2001-01-01 to 2003-10-24 and 2023-11-10 to 2026-08-09,"7,322-day middle gap; publication timestamps unavailable"
+bam_liquidity_recovered,False,REFERENCE_DATE_ONLY,UNREVISED_ADMIN,2019-10-30 to 2026-08-05,weekly PDF public-release dates/timestamps not established
+treasury_auctions_recovered,False,REFERENCE_DATE_ONLY,UNREVISED_ADMIN,2019-10-29 to 2026-08-04,result-publication dates absent; demanded amounts and settlement dates unavailable

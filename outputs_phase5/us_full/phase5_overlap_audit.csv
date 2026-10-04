@@ -1,0 +1,8 @@
+market,origin_frequency,horizon,n_origins,median_origin_gap_days,min_origin_gap_days,max_origin_gap_days,overlap_bandwidth,origins_overlapping_next,mean_subsequent_overlaps,hac_rule
+US_CORE,monthly,5,56,31.0,28,33,0,0,0.0,date-derived maximum overlap in loss-sequence units
+US_CORE,monthly,10,55,30.5,28,33,0,0,0.0,date-derived maximum overlap in loss-sequence units
+US_CORE,monthly,22,55,30.5,28,33,1,39,0.7090909090909091,date-derived maximum overlap in loss-sequence units
+US_CORE,monthly,44,54,30.0,28,33,2,53,1.8703703703703705,date-derived maximum overlap in loss-sequence units
+US_CORE,monthly,66,53,30.5,28,33,3,52,2.8867924528301887,date-derived maximum overlap in loss-sequence units
+US_CORE,monthly,132,50,31.0,28,33,6,49,5.58,date-derived maximum overlap in loss-sequence units
+US_CORE,monthly,252,44,31.0,28,33,12,43,10.204545454545455,date-derived maximum overlap in loss-sequence units

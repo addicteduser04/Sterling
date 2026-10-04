@@ -139,3 +139,114 @@ def synthetic_result():
     zeros = np.zeros((2, 3))
     curves = np.zeros((2, 9))
     return dns.BacktestOrigin(pd.Timestamp("2020-01-01"), pd.Timestamp("2019-12-31"), pd.bdate_range("2020-01-01", periods=2), 1.5, None, zeros, zeros, curves, curves, curves, 0, 0, 0, 0, 0, 0, 0, np.zeros(9), np.zeros(3))
+
+
+def test_convex_blend_boundaries_and_intermediate():
+    persistence = np.array([0.02, 0.03])
+    forecast = np.array([0.04, 0.01])
+    np.testing.assert_array_equal(dns.combine_persistence_and_dns(persistence, forecast, 0), persistence)
+    np.testing.assert_array_equal(dns.combine_persistence_and_dns(persistence, forecast, 1), forecast)
+    np.testing.assert_allclose(
+        dns.combine_persistence_and_dns(persistence, forecast, 0.25),
+        0.75 * persistence + 0.25 * forecast,
+    )
+
+
+def test_blend_weight_is_bounded_and_zero_denominator_is_safe():
+    p = np.array([0.01, 0.02])
+    assert dns.estimate_convex_blend_weight(p, p, np.array([0.03, 0.04])) == 0
+    assert dns.estimate_convex_blend_weight(p, p + 0.01, p + 1) == 1
+    assert dns.estimate_convex_blend_weight(p, p + 0.01, p - 1) == 0
+
+
+def blend_history():
+    rows = []
+    origins = pd.bdate_range("2020-01-01", periods=8)
+    for horizon in (5, 10, 22):
+        for i, origin in enumerate(origins):
+            target = origin + pd.offsets.BDay(2)
+            for maturity in MATURITIES:
+                rows.append({
+                    "forecast_origin": origin,
+                    "target_date": target,
+                    "horizon": horizon,
+                    "maturity": maturity,
+                    "is_observed_maturity": True,
+                    "actual_yield": 0.03 + horizon * 1e-5,
+                    "persistence_forecast": 0.03,
+                    "dns_forecast": 0.031 + horizon * 1e-5,
+                })
+    return pd.DataFrame(rows)
+
+
+def test_leakage_safe_weights_wait_for_completed_origins_and_are_horizon_specific():
+    history = blend_history()
+    weights = dns.estimate_leakage_safe_weight_history(history, min_origins=2)
+    first = weights.sort_values("forecast_origin").iloc[0]
+    assert first.weight == 0 and not first.estimated and "insufficient" in first.fallback_reason
+    # At the third business-day origin only the first target is known, not two.
+    origin = sorted(history.forecast_origin.unique())[2]
+    assert (weights[weights.forecast_origin == origin].n_completed_origins == 1).all()
+    final = weights[weights.forecast_origin == weights.forecast_origin.max()]
+    assert set(final.horizon) == {5, 10, 22}
+    assert final.groupby("horizon").weight.nunique().eq(1).all()
+
+
+def test_future_changes_cannot_change_earlier_blend_weights():
+    history = blend_history()
+    before = dns.estimate_leakage_safe_weight_history(history, min_origins=2)
+    cutoff = sorted(history.forecast_origin.unique())[4]
+    changed = history.copy()
+    changed.loc[changed.target_date > cutoff, "actual_yield"] = 0.9
+    after = dns.estimate_leakage_safe_weight_history(changed, min_origins=2)
+    cols = ["forecast_origin", "horizon", "weight", "n_completed_origins"]
+    pd.testing.assert_frame_equal(before[before.forecast_origin <= cutoff][cols].reset_index(drop=True), after[after.forecast_origin <= cutoff][cols].reset_index(drop=True))
+
+
+def test_interpolated_maturities_are_excluded_by_default():
+    history = blend_history()
+    extra = history.iloc[:8].copy()
+    extra["maturity"] = 3.0
+    extra["is_observed_maturity"] = False
+    extra["actual_yield"] = 0.9
+    augmented = pd.concat((history, extra), ignore_index=True)
+    pd.testing.assert_frame_equal(
+        dns.estimate_leakage_safe_weight_history(history, 2),
+        dns.estimate_leakage_safe_weight_history(augmented, 2),
+    )
+
+
+def test_blend_min_origins_validation_and_cli_help():
+    with pytest.raises(ValueError, match="positive integer"):
+        dns.estimate_leakage_safe_weight_history(blend_history(), 0)
+    result = subprocess.run(
+        [sys.executable, "src/modelling/dns.py", "--help"],
+        cwd=Path(__file__).parents[1], text=True, capture_output=True,
+    )
+    assert result.returncode == 0 and "--blend-min-origins" in result.stdout
+
+
+def test_synthetic_blend_output_end_to_end(tmp_path):
+    results = []
+    for i, cutoff in enumerate(pd.bdate_range("2020-01-01", periods=6, freq="5B")):
+        dates = pd.bdate_range(cutoff + pd.offsets.BDay(1), periods=22)
+        persistence = np.full((22, 9), 0.03)
+        predicted = np.full((22, 9), 0.032)
+        actual = np.full((22, 9), 0.031)
+        results.append(dns.BacktestOrigin(
+            cutoff, cutoff, dates, 1.5, None, np.zeros((22, 3)), np.zeros((22, 3)),
+            predicted, actual, persistence, 0, 0, 0, 0, 0, 0, 0,
+            np.zeros(9), np.zeros(3),
+        ))
+    future = pd.bdate_range("2020-03-01", periods=22)
+    final = {"forecast_yields": pd.DataFrame(np.full((22, 9), 0.032), index=future, columns=COLUMNS_X)}
+    last = pd.Series(np.full(9, 0.03), index=COLUMNS_X, name=pd.Timestamp("2020-02-28"))
+    table, metadata = dns.generate_blend_outputs(results, final, last, MATURITIES, "bam", tmp_path, 2)
+    assert set(table.horizon) == {5, 10, 22}
+    assert table.rate_unit.eq("decimal").all() and table.model_variant.eq("bam").all()
+    assert metadata["internal_yield_unit"] == "decimal"
+    for filename in (
+        "backtest_blended_bam.csv", "forecast_yields_blended_bam.csv",
+        "forecast_blend_metadata_bam.json", "comparison_blended_bam.png",
+    ):
+        assert (tmp_path / filename).exists()

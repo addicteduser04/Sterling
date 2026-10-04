@@ -21,7 +21,7 @@ python src/modelling/dns.py \
   --combined-data data/masi/bam_ecb_2004.csv \
   --bam-data data/processed/bam_observed_and_interpolated.csv \
   --bam-unit decimal --ecb-unit percent \
-  --output-dir outputs_corrected
+  --output-dir outputs_dns
 
 Si ``--bam-data`` est omis, le modèle BAM seul utilise le calendrier du panel
 aligné BAM--BCE. Le programme l'indique explicitement dans son rapport.
@@ -53,6 +53,7 @@ OBSERVED_BAM_MATURITIES = np.array([0.25, 0.5, 1, 2, 5, 10, 15, 20, 30])
 EPS = 1e-10
 PLOT_PERCENT = 100.0
 VALID_RATE_UNITS = ("decimal", "percent")
+BLEND_HORIZONS = (5, 10, 22)
 
 
 @dataclass(frozen=True)
@@ -111,7 +112,7 @@ class PipelineConfig:
     """Configuration importable; all rates are decimal after ingestion."""
 
     combined_data: str | Path
-    output_dir: str | Path = "outputs_corrected"
+    output_dir: str | Path = "outputs_dns"
     bam_data: str | Path | None = None
     bam_unit: str = "decimal"
     ecb_unit: str = "percent"
@@ -121,6 +122,7 @@ class PipelineConfig:
     influence_window: int = 500
     influence_ridge: float = 10.0
     skip_backtest: bool = False
+    blend_min_origins: int = 3
 
 
 # ---------------------------------------------------------------------------
@@ -673,6 +675,8 @@ def backtest_walk_forward(
     influence_window: int = 500,
     influence_ridge: float = 10.0,
     decay_grid: np.ndarray | None = None,
+    all_maturities_observed: bool = False,
+    minimum_evaluation_horizon: int | None = None,
 ) -> list[BacktestOrigin]:
     if ecb_df is not None:
         if not bam_df.index.equals(ecb_df.index):
@@ -680,11 +684,14 @@ def backtest_walk_forward(
         _validate_matching_maturities(bam_df, ecb_df)
     dates = bam_df.index
     maturities = parse_maturities(bam_df.columns)
-    weights = maturity_weights(maturities, interpolated_weight)
-    observed = infer_observed_mask(maturities)
+    weights = np.ones_like(maturities) if all_maturities_observed else maturity_weights(maturities, interpolated_weight)
+    observed = np.ones(len(maturities), dtype=bool) if all_maturities_observed else infer_observed_mask(maturities)
     results: list[BacktestOrigin] = []
 
-    for number, (month, cutoff) in enumerate(_month_origins(dates, start_date, horizon), 1):
+    origin_horizon = horizon if minimum_evaluation_horizon is None else int(minimum_evaluation_horizon)
+    if not 0 < origin_horizon <= horizon:
+        raise ValueError("minimum_evaluation_horizon must be in [1, horizon]")
+    for number, (month, cutoff) in enumerate(_month_origins(dates, start_date, origin_horizon), 1):
         train_dates = dates[: cutoff + 1]
         train_bam = bam_df.iloc[: cutoff + 1].to_numpy(float)
         bam_model, bam_ols, _ = calibrate_dns(
@@ -729,6 +736,7 @@ def backtest_walk_forward(
             )
 
         future = bam_df.iloc[cutoff + 1 : cutoff + 1 + horizon]
+        forecast_betas = forecast_betas[:len(future)]
         true_yields = future.to_numpy(float)
         predicted_yields = forecast_betas @ bam_model.loadings.T
         last_curve = bam_df.iloc[cutoff].to_numpy(float)
@@ -795,6 +803,148 @@ def backtest_table(results: list[BacktestOrigin]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def combine_persistence_and_dns(
+    persistence: np.ndarray, dns_forecast: np.ndarray, weight: float | np.ndarray
+) -> np.ndarray:
+    """Return the convex persistence--DNS forecast without changing inputs."""
+
+    weight_array = np.asarray(weight, dtype=float)
+    if np.any(~np.isfinite(weight_array)) or np.any((weight_array < 0) | (weight_array > 1)):
+        raise ValueError("blend weight must be finite and in [0, 1].")
+    persistence_array = np.asarray(persistence, dtype=float)
+    dns_array = np.asarray(dns_forecast, dtype=float)
+    if persistence_array.shape != dns_array.shape:
+        raise ValueError("persistence and DNS forecasts must have identical shapes.")
+    return (1.0 - weight_array) * persistence_array + weight_array * dns_array
+
+
+def estimate_convex_blend_weight(
+    persistence: np.ndarray, dns_forecast: np.ndarray, actual: np.ndarray
+) -> float:
+    """Least-squares blend weight, clipped to [0, 1], using finite pairs only."""
+
+    p, d, y = np.broadcast_arrays(
+        np.asarray(persistence, float), np.asarray(dns_forecast, float), np.asarray(actual, float)
+    )
+    valid = np.isfinite(p) & np.isfinite(d) & np.isfinite(y)
+    delta = (d - p)[valid]
+    target = (y - p)[valid]
+    denominator = float(delta @ delta)
+    if denominator <= EPS:
+        return 0.0
+    return float(np.clip(float(delta @ target) / denominator, 0.0, 1.0))
+
+
+def _blend_history_rows(
+    results: list[BacktestOrigin], variant: str, maturities: np.ndarray
+) -> pd.DataFrame:
+    """Expand existing DNS results at the requested horizons; values stay decimal."""
+
+    observed = infer_observed_mask(maturities)
+    rows: list[dict[str, object]] = []
+    for result in results:
+        for horizon in BLEND_HORIZONS:
+            index = horizon - 1
+            if index >= len(result.future_dates):
+                continue
+            for maturity_index, maturity in enumerate(maturities):
+                rows.append(
+                    {
+                        "rate_unit": "decimal",
+                        "model_variant": variant,
+                        "forecast_origin": result.cutoff_date,
+                        "target_date": result.future_dates[index],
+                        "horizon": horizon,
+                        "maturity": float(maturity),
+                        "is_observed_maturity": bool(observed[maturity_index]),
+                        "actual_yield": result.true_yields[index, maturity_index],
+                        "persistence_forecast": result.persistence_yields[index, maturity_index],
+                        "dns_forecast": result.predicted_yields[index, maturity_index],
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
+def estimate_leakage_safe_weight_history(
+    history: pd.DataFrame,
+    min_origins: int = 3,
+    observed_only: bool = True,
+) -> pd.DataFrame:
+    """Estimate each origin/horizon weight from outcomes fully known at that origin.
+
+    Rows at an origin are never used for their own weight: eligible historical
+    forecasts must have ``target_date <= forecast_origin`` and an earlier origin.
+    """
+
+    if not isinstance(min_origins, int) or isinstance(min_origins, bool) or min_origins < 1:
+        raise ValueError("blend_min_origins must be a positive integer.")
+    required = {
+        "forecast_origin", "target_date", "horizon", "actual_yield",
+        "persistence_forecast", "dns_forecast", "is_observed_maturity",
+    }
+    missing = required - set(history.columns)
+    if missing:
+        raise ValueError(f"blend history is missing columns: {sorted(missing)}")
+    rows: list[dict[str, object]] = []
+    work = history.copy()
+    work["forecast_origin"] = pd.to_datetime(work["forecast_origin"])
+    work["target_date"] = pd.to_datetime(work["target_date"])
+    for horizon in sorted(work["horizon"].unique()):
+        horizon_rows = work[work["horizon"] == horizon]
+        if observed_only:
+            horizon_rows = horizon_rows[horizon_rows["is_observed_maturity"]]
+        for origin in sorted(horizon_rows["forecast_origin"].unique()):
+            eligible = horizon_rows[
+                (horizon_rows["forecast_origin"] < origin)
+                & (horizon_rows["target_date"] <= origin)
+            ]
+            n_origins = int(eligible["forecast_origin"].nunique())
+            if n_origins < min_origins:
+                weight = 0.0
+                estimated = False
+                reason = f"insufficient completed origins ({n_origins} < {min_origins})"
+            else:
+                weight = estimate_convex_blend_weight(
+                    eligible["persistence_forecast"], eligible["dns_forecast"], eligible["actual_yield"]
+                )
+                estimated = True
+                reason = None
+            rows.append(
+                {
+                    "forecast_origin": pd.Timestamp(origin),
+                    "horizon": int(horizon),
+                    "weight": weight,
+                    "n_completed_origins": n_origins,
+                    "estimated": estimated,
+                    "fallback_reason": reason,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def evaluate_blended_forecasts(
+    results: list[BacktestOrigin],
+    maturities: np.ndarray,
+    variant: str,
+    min_origins: int = 3,
+) -> pd.DataFrame:
+    """Create the scientific long table for persistence, DNS and the blend."""
+
+    history = _blend_history_rows(results, variant, np.asarray(maturities, float))
+    if history.empty:
+        return history
+    weights = estimate_leakage_safe_weight_history(history, min_origins=min_origins)
+    table = history.merge(weights, on=["forecast_origin", "horizon"], validate="many_to_one")
+    table["blended_forecast"] = combine_persistence_and_dns(
+        table["persistence_forecast"].to_numpy(),
+        table["dns_forecast"].to_numpy(),
+        table["weight"].to_numpy(),
+    )
+    for name in ("persistence", "dns", "blended"):
+        table[f"{name}_error"] = table["actual_yield"] - table[f"{name}_forecast"]
+    return table
+
+
 def diebold_mariano(loss_model: np.ndarray, loss_benchmark: np.ndarray, lag: int = 3) -> dict[str, float]:
     """DM bilatéral avec variance Newey--West ; d<0 favorise le modèle."""
 
@@ -819,6 +969,79 @@ def diebold_mariano(loss_model: np.ndarray, loss_benchmark: np.ndarray, lag: int
         statistic = float(d.mean() / math.sqrt(variance_mean))
         p_value = float(2 * student_t.sf(abs(statistic), df=n - 1))
     return {"statistic": statistic, "p_value": p_value, "mean_loss_difference": float(d.mean())}
+
+
+def forecast_metrics(table: pd.DataFrame) -> list[dict[str, object]]:
+    """Metrics by variant/horizon/maturity and aggregate observed curve."""
+
+    if table.empty:
+        return []
+    records: list[dict[str, object]] = []
+    groups: list[tuple[str, int, str, pd.DataFrame]] = []
+    for (variant, horizon, maturity), group in table.groupby(
+        ["model_variant", "horizon", "maturity"], sort=True
+    ):
+        if bool(group["is_observed_maturity"].iloc[0]):
+            groups.append((str(variant), int(horizon), str(maturity), group))
+    for (variant, horizon), group in table[table["is_observed_maturity"]].groupby(
+        ["model_variant", "horizon"], sort=True
+    ):
+        groups.append((str(variant), int(horizon), "aggregate_observed_curve", group))
+    for variant, horizon, maturity, group in groups:
+        persistence_rmse = float(np.sqrt(np.nanmean(group["persistence_error"] ** 2)))
+        for model in ("persistence", "dns", "blended"):
+            error = group[f"{model}_error"].to_numpy(float)
+            rmse = float(np.sqrt(np.nanmean(error**2)))
+            records.append(
+                {
+                    "model_variant": variant,
+                    "horizon": horizon,
+                    "maturity": maturity,
+                    "model": model,
+                    "n": int(np.isfinite(error).sum()),
+                    "rmse": rmse,
+                    "mae": float(np.nanmean(np.abs(error))),
+                    "median_absolute_error": float(np.nanmedian(np.abs(error))),
+                    "bias": float(np.nanmean(error)),
+                    "maximum_absolute_error": float(np.nanmax(np.abs(error))),
+                    "relative_rmse_against_persistence": (
+                        float(rmse / persistence_rmse) if persistence_rmse > EPS else None
+                    ),
+                    "skill_score_against_persistence": (
+                        float(1.0 - rmse**2 / persistence_rmse**2)
+                        if persistence_rmse > EPS else None
+                    ),
+                    "rate_unit": "decimal",
+                }
+            )
+    return records
+
+
+def blend_dm_comparisons(base: pd.DataFrame, enriched: pd.DataFrame) -> dict[str, object]:
+    """Autocorrelation-robust DM tests on exactly matched realised observations."""
+
+    output: dict[str, object] = {}
+    for table, variant in ((base, "bam"), (enriched, "bam_ecb")):
+        for horizon, group in table[table["is_observed_maturity"]].groupby("horizon"):
+            key = f"{variant}_J+{horizon}"
+            losses = {name: group[f"{name}_error"].to_numpy(float) ** 2 for name in ("persistence", "dns", "blended")}
+            output[key] = {
+                "dns_vs_persistence": diebold_mariano(losses["dns"], losses["persistence"]),
+                "blend_vs_persistence": diebold_mariano(losses["blended"], losses["persistence"]),
+                "blend_vs_dns": diebold_mariano(losses["blended"], losses["dns"]),
+            }
+    keys = ["forecast_origin", "target_date", "horizon", "maturity"]
+    common = base[base["is_observed_maturity"]].merge(
+        enriched[enriched["is_observed_maturity"]], on=keys, suffixes=("_bam", "_bam_ecb")
+    )
+    for horizon, group in common.groupby("horizon"):
+        same_actual = np.isclose(group["actual_yield_bam"], group["actual_yield_bam_ecb"], equal_nan=False)
+        matched = group[same_actual]
+        output[f"bam_ecb_blend_vs_bam_blend_J+{horizon}"] = diebold_mariano(
+            matched["blended_error_bam_ecb"].to_numpy(float) ** 2,
+            matched["blended_error_bam"].to_numpy(float) ** 2,
+        )
+    return output
 
 
 # ---------------------------------------------------------------------------
@@ -956,6 +1179,29 @@ def plot_model_comparison(
             ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
             plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
     fig.suptitle("Comparaison strictement chronologique des modèles", fontsize=14, fontweight="bold")
+    _save_figure(fig, output)
+
+
+def plot_blended_comparison(table: pd.DataFrame, output: Path, title: str) -> None:
+    """Compare the three forecasts by horizon on the observed maturities."""
+
+    observed = table[table["is_observed_maturity"]]
+    if observed.empty:
+        return
+    fig, axes = plt.subplots(1, len(BLEND_HORIZONS), figsize=(18, 5.4), squeeze=False)
+    colors = {"persistence": "#444444", "dns": "#1f77b4", "blended": "#2ca02c"}
+    labels = {"persistence": "Persistance", "dns": "DNS–Kalman", "blended": "Mélange"}
+    for ax, horizon in zip(axes[0], BLEND_HORIZONS):
+        group = observed[observed["horizon"] == horizon]
+        for model in ("persistence", "dns", "blended"):
+            values = np.sqrt(group.groupby("forecast_origin")[f"{model}_error"].apply(lambda x: np.nanmean(x**2)))
+            ax.plot(values.index, values.to_numpy() * PLOT_PERCENT, marker="o", ms=3, label=labels[model], color=colors[model])
+        ax.set(title=f"J+{horizon}", ylabel="RMSE (points de %)", xlabel="Origine")
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+        ax.tick_params(axis="x", rotation=45)
+        ax.grid(alpha=0.22)
+        ax.legend(fontsize=8)
+    fig.suptitle(title, fontweight="bold")
     _save_figure(fig, output)
 
 
@@ -1119,6 +1365,81 @@ def _jsonable_model(model: DNSModel | None) -> dict[str, object] | None:
     }
 
 
+def generate_blend_outputs(
+    results: list[BacktestOrigin],
+    final_result: dict[str, object],
+    last_curve: pd.Series,
+    maturities: np.ndarray,
+    variant: str,
+    output_dir: Path,
+    min_origins: int = 3,
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    """Write leakage-safe backtest/final blend outputs for one model variant."""
+
+    table = evaluate_blended_forecasts(results, maturities, variant, min_origins)
+    table.to_csv(output_dir / f"backtest_blended_{variant}.csv", index=False)
+    plot_blended_comparison(
+        table, output_dir / f"comparison_blended_{variant}.png",
+        f"Persistance, DNS–Kalman et mélange — {variant.upper()}",
+    )
+    cutoff = pd.Timestamp(last_curve.name)
+    history = _blend_history_rows(results, variant, maturities)
+    observed = history[history["is_observed_maturity"]] if not history.empty else history
+    forecast_yields = final_result["forecast_yields"]
+    rows: list[pd.Series] = []
+    metadata: dict[str, object] = {
+        "model_variant": variant,
+        "internal_yield_unit": "decimal",
+        "objective_function": "pooled least squares across observed BAM maturities",
+        "maturities_used": [float(x) for x in maturities[infer_observed_mask(maturities)]],
+        "estimation_cutoff_date": cutoff.isoformat(),
+        "horizons": {},
+    }
+    for horizon in BLEND_HORIZONS:
+        eligible = observed[
+            (observed["horizon"] == horizon)
+            & (observed["forecast_origin"] < cutoff)
+            & (observed["target_date"] <= cutoff)
+        ] if not observed.empty else observed
+        n_origins = int(eligible["forecast_origin"].nunique()) if not eligible.empty else 0
+        if n_origins < min_origins:
+            weight, estimated = 0.0, False
+            reason = f"insufficient completed origins ({n_origins} < {min_origins})"
+        else:
+            weight = estimate_convex_blend_weight(
+                eligible["persistence_forecast"], eligible["dns_forecast"], eligible["actual_yield"]
+            )
+            estimated, reason = True, None
+        item: dict[str, object] = {
+            "weight": weight,
+            "n_completed_historical_origins": n_origins,
+            "estimation_cutoff_date": cutoff.isoformat(),
+            "maturities_used": metadata["maturities_used"],
+            "objective_function": metadata["objective_function"],
+            "estimated": estimated,
+            "fallback_reason": reason,
+            "internal_yield_unit": "decimal",
+        }
+        metadata["horizons"][f"J+{horizon}"] = item
+        if horizon <= len(forecast_yields):
+            blended = combine_persistence_and_dns(
+                last_curve.to_numpy(float), forecast_yields.iloc[horizon - 1].to_numpy(float), weight
+            )
+            row = pd.Series(blended, index=forecast_yields.columns, name=forecast_yields.index[horizon - 1])
+            row["horizon"] = horizon
+            row["weight"] = weight
+            rows.append(row)
+    final_table = pd.DataFrame(rows)
+    if not final_table.empty:
+        final_table.insert(0, "rate_unit", "decimal")
+        final_table.index.name = "target_date"
+    final_table.to_csv(output_dir / f"forecast_yields_blended_{variant}.csv")
+    (output_dir / f"forecast_blend_metadata_{variant}.json").write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return table, metadata
+
+
 def build_report(
     output_dir: Path,
     base_full: list[BacktestOrigin],
@@ -1127,6 +1448,10 @@ def build_report(
     final_base: dict[str, object],
     final_ecb: dict[str, object],
     used_standalone_bam: bool,
+    blended_base: pd.DataFrame | None = None,
+    blended_ecb: pd.DataFrame | None = None,
+    blend_metadata_base: dict[str, object] | None = None,
+    blend_metadata_ecb: dict[str, object] | None = None,
 ) -> None:
     common_base = {r.month: r for r in base_aligned}
     common_ecb = {r.month: r for r in enriched}
@@ -1170,6 +1495,12 @@ def build_report(
             "ecb_influence": None if final_ecb["influence"] is None else final_ecb["influence"].tolist(),
         },
     }
+    if blended_base is not None and blended_ecb is not None:
+        report["persistence_dns_blend"] = {
+            "weights": {"bam": blend_metadata_base, "bam_ecb": blend_metadata_ecb},
+            "metrics": forecast_metrics(pd.concat((blended_base, blended_ecb), ignore_index=True)),
+            "diebold_mariano": blend_dm_comparisons(blended_base, blended_ecb),
+        }
     (output_dir / "research_report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -1191,13 +1522,19 @@ def parse_args() -> argparse.Namespace:
         default="percent",
         help="Unité BCE (défaut: percent; 3.5 représente 3.5 pour cent)",
     )
-    parser.add_argument("--output-dir", default="outputs_corrected")
+    parser.add_argument("--output-dir", default="outputs_dns")
     parser.add_argument("--start-date", default="2022-01-01")
     parser.add_argument("--horizon", type=int, default=22)
     parser.add_argument("--interpolated-weight", type=float, default=0.35)
     parser.add_argument("--influence-window", type=int, default=500)
     parser.add_argument("--influence-ridge", type=float, default=10.0)
     parser.add_argument("--skip-backtest", action="store_true")
+    parser.add_argument(
+        "--blend-min-origins",
+        type=int,
+        default=3,
+        help="Nombre minimal positif d'origines historiques achevées par horizon (défaut: 3)",
+    )
     return parser.parse_args()
 
 
@@ -1241,6 +1578,8 @@ def run_dns_pipeline(config: PipelineConfig | Mapping[str, object]) -> dict[str,
     cfg = config if isinstance(config, PipelineConfig) else PipelineConfig(**config)
     if cfg.horizon < 1:
         raise ValueError("horizon doit être positif.")
+    if not isinstance(cfg.blend_min_origins, int) or isinstance(cfg.blend_min_origins, bool) or cfg.blend_min_origins < 1:
+        raise ValueError("blend_min_origins doit être un entier strictement positif.")
     output_dir = Path(cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1286,6 +1625,14 @@ def run_dns_pipeline(config: PipelineConfig | Mapping[str, object]) -> dict[str,
     )
 
     if cfg.skip_backtest:
+        generate_blend_outputs(
+            [], final_base, bam_full.iloc[-1], parse_maturities(bam_full.columns),
+            "bam", output_dir, cfg.blend_min_origins,
+        )
+        generate_blend_outputs(
+            [], final_ecb, bam_aligned.iloc[-1], parse_maturities(bam_aligned.columns),
+            "bam_ecb", output_dir, cfg.blend_min_origins,
+        )
         print("Prévisions produites ; backtest ignoré à la demande.")
         return {"base_final": final_base, "enriched_final": final_ecb}
 
@@ -1321,6 +1668,14 @@ def run_dns_pipeline(config: PipelineConfig | Mapping[str, object]) -> dict[str,
     plot_backtest(base_full, output_dir / "backtest_bam.png", "Backtest walk-forward — DNS–Kalman BAM")
     plot_backtest(enriched, output_dir / "backtest_bam_ecb.png", "Backtest walk-forward — DNS–Kalman BAM + BCE")
     plot_model_comparison(base_aligned, enriched, output_dir / "comparison_base_vs_ecb.png")
+    blended_base, blend_metadata_base = generate_blend_outputs(
+        base_full, final_base, bam_full.iloc[-1], parse_maturities(bam_full.columns),
+        "bam", output_dir, cfg.blend_min_origins,
+    )
+    blended_ecb, blend_metadata_ecb = generate_blend_outputs(
+        enriched, final_ecb, bam_aligned.iloc[-1], parse_maturities(bam_aligned.columns),
+        "bam_ecb", output_dir, cfg.blend_min_origins,
+    )
     build_report(
         output_dir,
         base_full,
@@ -1329,6 +1684,10 @@ def run_dns_pipeline(config: PipelineConfig | Mapping[str, object]) -> dict[str,
         final_base,
         final_ecb,
         bool(cfg.bam_data),
+        blended_base,
+        blended_ecb,
+        blend_metadata_base,
+        blend_metadata_ecb,
     )
     print(f"Pipeline terminé. Résultats : {output_dir.resolve()}")
     return {
@@ -1337,6 +1696,8 @@ def run_dns_pipeline(config: PipelineConfig | Mapping[str, object]) -> dict[str,
         "base_backtest": base_full,
         "base_aligned_backtest": base_aligned,
         "enriched_backtest": enriched,
+        "blended_base_backtest": blended_base,
+        "blended_enriched_backtest": blended_ecb,
     }
 
 

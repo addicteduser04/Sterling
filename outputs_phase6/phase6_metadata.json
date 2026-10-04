@@ -1,0 +1,13 @@
+{
+  "horizons": [
+    252,
+    504,
+    756,
+    1008,
+    1260
+  ],
+  "minimum_training_observations": 1260,
+  "internal_unit": "decimal",
+  "origin_frequency": "monthly",
+  "historical_phase5_results_modified": false
+}

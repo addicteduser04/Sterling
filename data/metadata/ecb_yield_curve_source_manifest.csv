@@ -1,0 +1,2 @@
+market,provider,dataset,definition,frequency,source_unit,retrieval_date,source_url,methodology_url
+EUROPE,European Central Bank,YC.B.U2.EUR.4F.G_N_A.SV_C_YM,AAA euro-area central-government nominal zero-coupon spot curve; Svensson method,daily businessweek; end-period,percent per annum,2026-08-11,https://data.ecb.europa.eu/data/datasets/YC,https://www.ecb.europa.eu/stats/financial_markets_and_interest_rates/euro_area_yield_curves/html/index.en.html

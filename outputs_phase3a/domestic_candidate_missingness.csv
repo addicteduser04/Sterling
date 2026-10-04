@@ -1,0 +1,7 @@
+frequency,series_id,missing_count,missing_pct
+monthly,bam_policy_rate,0,0.0
+monthly,hcp_cpi_headline,0,0.0
+monthly,bam_interbank_weighted_average,21,46.666666666666664
+weekly,bam_policy_rate,0,0.0
+weekly,hcp_cpi_headline,0,0.0
+weekly,bam_interbank_weighted_average,0,0.0

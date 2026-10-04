@@ -1,96 +1,55 @@
-# Dynamic Nelson-Siegel + Kalman Filter
+# BAM yield-curve modelling
 
-This note explains the implementation in [src/modelling/DNS.py](src/modelling/DNS.py) step by step.
+The active research pipeline is split into three modules:
 
-## 1. Goal
+- `src/modelling/dns.py`: persistence and Dynamic Nelson–Siegel/Kalman/OU
+  controls, including the leakage-safe persistence–DNS blend.
+- `src/modelling/phase1.py`: direct NS/PCA factor-change models and the
+  regularized PCA VAR.
+- `src/modelling/phase2.py`: direct maturity models, XGBoost factor models,
+  overlap-derived DM inference, and weekly robustness.
 
-The script fits a Dynamic Nelson-Siegel (DNS) model to the BAM yield curve data, using the maturity columns ending in `_x` from [data/masi/bam_ecb_2004.csv](data/masi/bam_ecb_2004.csv).
+All rates are decimals internally (`0.035 = 3.5%`). Input units are explicit;
+plots alone convert to percentages or basis points.
 
-The goal is to estimate three latent factors:
-- `beta0`: level factor
-- `beta1`: slope factor
-- `beta2`: curvature factor
+## Leakage rules
 
-These factors are then used to reconstruct the observed yield curve.
+At each forecast origin, model fitting, scaling, Nelson–Siegel calibration,
+PCA, features, and hyperparameter selection use only historically available
+observations. A direct horizon-h target is admitted only once its target date
+has occurred. Expanding validation folds are purged for target overlap.
 
-## 2. Data loading
+DM/Newey–West bandwidths are derived from actual origin-to-target forecast
+windows. For the monthly experiment they are 0 at J+5/J+10 and 1 at J+22.
 
-The script starts by reading the CSV file and selecting only the BAM yield columns:
-- columns ending in `_x`
-
-It converts the index to a datetime index and sorts the data chronologically.
-
-## 3. Maturity parsing
-
-Each column name is converted into a maturity in years:
-- `3M_x` becomes `0.25`
-- `6M_x` becomes `0.5`
-- `1Y_x` becomes `1.0`
-- `10Y_x` becomes `10.0`
-
-This is done by the `parse_maturity` helper.
-
-## 4. Nelson-Siegel loadings
-
-The Nelson-Siegel model expresses yields as:
-
-$$y(\tau) = \beta_0 + \beta_1 \cdot \frac{1 - e^{-\lambda \tau}}{\lambda \tau} + \beta_2 \left( \frac{1 - e^{-\lambda \tau}}{\lambda \tau} - e^{-\lambda \tau} \right)$$
-
-The function `nelson_siegel_loadings` builds the loading matrix for each maturity `tau`.
-
-This matrix is later used to connect latent factors to observed yields.
-
-## 5. Kalman filter setup
-
-The model assumes that the latent factors follow a simple random-walk process:
-
-- state at time $t$ depends on the previous state
-- small process noise is added
-- observations are noisy measurements of the yield curve
-
-The script initializes:
-- a zero mean for the state vector
-- an identity covariance matrix
-- a small process noise term
-- a small observation noise term
-
-## 6. Filtering step
-
-For each date in the yield curve data, the script:
-1. reads the observed yields for that date
-2. selects the valid observations
-3. predicts the next state using the previous estimate
-4. compares the prediction with the observed yields
-5. updates the factor estimates using the Kalman gain
-
-This produces a filtered estimate of `beta0`, `beta1`, and `beta2` for each time step.
-
-## 7. Reconstructing fitted yields
-
-Once the factors are estimated, the script reconstructs the fitted yield curves using the Nelson-Siegel loadings.
-
-This gives a model-based version of the observed yields, which can be compared to the real data.
-
-## 8. Forecasting
-
-If a forecast horizon is requested, the script can project the factors forward for a few periods.
-
-These forecasted factors are then transformed into forecasted yields using the same Nelson-Siegel structure.
-
-## 9. Outputs
-
-The script writes the following files to [data/analysis_results](data/analysis_results):
-- `dns_kalman_betas.csv`: estimated factor values
-- `dns_kalman_fitted_yields.csv`: fitted yields from the filtered factors
-- `dns_kalman_forecast_betas.csv`: forecasted factors
-- `dns_kalman_forecast_yields.csv`: forecasted yields
-
-## 10. How to run it
-
-From the project root, run:
+## Commands
 
 ```bash
-python src/modelling/DNS.py
+python src/modelling/dns.py \
+  --combined-data data/masi/bam_ecb_2004.csv \
+  --bam-unit percent --ecb-unit percent \
+  --output-dir outputs_dns
+
+python -m src.modelling.phase1 \
+  --bam-data data/masi/bam_ecb_2004.csv \
+  --bam-unit percent --output-dir outputs_phase1
+
+python -m src.modelling.phase2 \
+  --bam-data data/masi/bam_ecb_2004.csv \
+  --bam-unit percent --phase1-dir outputs_phase1 \
+  --output-dir outputs_phase2
 ```
 
-This will generate the output CSV files automatically.
+The legacy `data/masi/bam_ecb_2004.csv` stores both BAM and ECB inputs in
+percentage points, hence the explicit `percent` arguments above.
+
+## Validated results
+
+- `outputs_weighted/`: retained DNS and persistence–DNS controls.
+- `outputs_phase1/`: regularized NS/PCA experiments.
+- `outputs_phase2/`: direct maturity, XGBoost, corrected DM, stability, and
+  weekly robustness results.
+
+The current evidence does not establish a statistically robust aggregate
+improvement over persistence. See `outputs_phase2/phase2_report.md` for the
+latest scientific conclusion.

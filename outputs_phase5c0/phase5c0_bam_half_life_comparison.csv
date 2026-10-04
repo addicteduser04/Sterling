@@ -1,0 +1,4 @@
+factor,median_ar1_phi,ar1_half_life_observation_steps,ou_kappa_per_calendar_day,ou_half_life_calendar_days,frozen_dns_transition_increment
+beta0,0.9951303961739056,141.994740456941,0.0064515025096527,107.43965138707806,delta=1 per publication step
+beta1,0.99702219994813,232.42481989723146,0.0038475020725004,180.15511557853054,delta=1 per publication step
+beta2,0.9962877745110812,186.37332937584165,0.0047995627436863,144.4188184583611,delta=1 per publication step

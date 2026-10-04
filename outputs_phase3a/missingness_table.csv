@@ -1,0 +1,17 @@
+variable,obs_count,missing_pct,max_stale_age_days,treatment
+BAM policy rate,77,0.0,unbounded state carry,Carry state forward after decision
+Reserve requirement,0,,not available,Exclude pending verified history
+Interbank overnight rate,0,,not available,Acquire timestamped history before acceptance
+Central-bank liquidity injections,0,,not available,liquidity
+Banking liquidity deficit,0,,not available,liquidity
+Headline CPI index,0,,not available,Do not use local reference-month file yet
+Core inflation,0,,not available,Exclude pending structured release history
+Treasury auction results,0,,not available,auction
+Government financing needs,0,,not available,fiscal
+M3 money supply,0,,not available,monetary
+Bank credit growth,0,,not available,monetary
+EUR/MAD reference rate,0,,not available,fx
+USD/MAD reference rate,0,,not available,fx
+ECB deposit facility rate,0,,not available,external
+German 10-year sovereign yield,0,,not available,external
+Brent crude oil,0,,not available,global

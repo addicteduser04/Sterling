@@ -1,0 +1,79 @@
+{
+  "model_variant": "bam",
+  "internal_yield_unit": "decimal",
+  "objective_function": "pooled least squares across observed BAM maturities",
+  "maturities_used": [
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    30.0
+  ],
+  "estimation_cutoff_date": "2026-06-18T00:00:00",
+  "horizons": {
+    "J+5": {
+      "weight": 0.16945524483192514,
+      "n_completed_historical_origins": 53,
+      "estimation_cutoff_date": "2026-06-18T00:00:00",
+      "maturities_used": [
+        0.25,
+        0.5,
+        1.0,
+        2.0,
+        5.0,
+        10.0,
+        15.0,
+        20.0,
+        30.0
+      ],
+      "objective_function": "pooled least squares across observed BAM maturities",
+      "estimated": true,
+      "fallback_reason": null,
+      "internal_yield_unit": "decimal"
+    },
+    "J+10": {
+      "weight": 0.2841004743337066,
+      "n_completed_historical_origins": 53,
+      "estimation_cutoff_date": "2026-06-18T00:00:00",
+      "maturities_used": [
+        0.25,
+        0.5,
+        1.0,
+        2.0,
+        5.0,
+        10.0,
+        15.0,
+        20.0,
+        30.0
+      ],
+      "objective_function": "pooled least squares across observed BAM maturities",
+      "estimated": true,
+      "fallback_reason": null,
+      "internal_yield_unit": "decimal"
+    },
+    "J+22": {
+      "weight": 0.4808620764882478,
+      "n_completed_historical_origins": 53,
+      "estimation_cutoff_date": "2026-06-18T00:00:00",
+      "maturities_used": [
+        0.25,
+        0.5,
+        1.0,
+        2.0,
+        5.0,
+        10.0,
+        15.0,
+        20.0,
+        30.0
+      ],
+      "objective_function": "pooled least squares across observed BAM maturities",
+      "estimated": true,
+      "fallback_reason": null,
+      "internal_yield_unit": "decimal"
+    }
+  }
+}

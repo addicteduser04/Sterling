@@ -1,0 +1,140 @@
+{
+  "raw_bam_observations": 5328,
+  "first_date": "2004-09-06",
+  "last_date": "2026-06-18",
+  "unique_dates": 5328,
+  "duplicate_dates": 0,
+  "median_gap_days": 1.0,
+  "maximum_gap_days": 10,
+  "weekend_observations": 0,
+  "rows_before_features": 5328,
+  "rows_after_complete_features": 5306,
+  "rows_excluded_by_feature_lags": 22,
+  "nine_observed_maturities_confirmed": 9,
+  "evaluation_origins": 53,
+  "earliest_evaluation_origin": "2021-12-31",
+  "latest_evaluation_origin": "2026-04-30",
+  "training_samples_earliest": {
+    "J+5": 4220,
+    "J+10": 4215,
+    "J+22": 4203
+  },
+  "training_samples_latest": {
+    "J+5": 5271,
+    "J+10": 5266,
+    "J+22": 5254
+  },
+  "target_unavailable_exclusions_earliest": {
+    "J+5": 5,
+    "J+10": 10,
+    "J+22": 22
+  },
+  "forecast_rows_by_model_horizon": [
+    {
+      "model": "DNS_KALMAN_OU",
+      "horizon": 5,
+      "rows": 405
+    },
+    {
+      "model": "DNS_KALMAN_OU",
+      "horizon": 10,
+      "rows": 396
+    },
+    {
+      "model": "DNS_KALMAN_OU",
+      "horizon": 22,
+      "rows": 324
+    },
+    {
+      "model": "NS_ELASTICNET",
+      "horizon": 5,
+      "rows": 477
+    },
+    {
+      "model": "NS_ELASTICNET",
+      "horizon": 10,
+      "rows": 477
+    },
+    {
+      "model": "NS_ELASTICNET",
+      "horizon": 22,
+      "rows": 477
+    },
+    {
+      "model": "NS_RIDGE",
+      "horizon": 5,
+      "rows": 477
+    },
+    {
+      "model": "NS_RIDGE",
+      "horizon": 10,
+      "rows": 477
+    },
+    {
+      "model": "NS_RIDGE",
+      "horizon": 22,
+      "rows": 477
+    },
+    {
+      "model": "PCA_RIDGE",
+      "horizon": 5,
+      "rows": 477
+    },
+    {
+      "model": "PCA_RIDGE",
+      "horizon": 10,
+      "rows": 477
+    },
+    {
+      "model": "PCA_RIDGE",
+      "horizon": 22,
+      "rows": 477
+    },
+    {
+      "model": "PCA_RIDGE_VAR",
+      "horizon": 5,
+      "rows": 477
+    },
+    {
+      "model": "PCA_RIDGE_VAR",
+      "horizon": 10,
+      "rows": 477
+    },
+    {
+      "model": "PCA_RIDGE_VAR",
+      "horizon": 22,
+      "rows": 477
+    },
+    {
+      "model": "PERSISTENCE",
+      "horizon": 5,
+      "rows": 477
+    },
+    {
+      "model": "PERSISTENCE",
+      "horizon": 10,
+      "rows": 477
+    },
+    {
+      "model": "PERSISTENCE",
+      "horizon": 22,
+      "rows": 477
+    },
+    {
+      "model": "PERSISTENCE_DNS_BLEND",
+      "horizon": 5,
+      "rows": 405
+    },
+    {
+      "model": "PERSISTENCE_DNS_BLEND",
+      "horizon": 10,
+      "rows": 396
+    },
+    {
+      "model": "PERSISTENCE_DNS_BLEND",
+      "horizon": 22,
+      "rows": 324
+    }
+  ],
+  "meaning_of_4203": "daily feature-origin rows usable for J+22 training at the earliest evaluation origin; not date-by-maturity rows"
+}

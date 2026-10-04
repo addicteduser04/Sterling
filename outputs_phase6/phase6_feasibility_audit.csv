@@ -1,0 +1,6 @@
+market,horizon,available_observations,minimum_training_observations,realized_historical_forecasts,monthly_forecast_origins,non_overlapping_equivalent_windows,overlap_bandwidth,effective_inferential_information,earliest_possible_origin,latest_origin_with_realized_target,remaining_usable_historical_span_days,classification,classification_basis
+BAM,252,5328,1260,188,188,14.46,12,14.46,2009-10-30,2025-05-30,5691,LIMITED_POWER,sample structure only; frozen before model results
+BAM,504,5328,1260,175,175,6.73,25,6.73,2009-10-30,2024-04-30,5296,DESCRIPTIVE_ONLY,sample structure only; frozen before model results
+BAM,756,5328,1260,162,162,4.26,37,4.26,2009-10-30,2023-03-31,4900,DESCRIPTIVE_ONLY,sample structure only; frozen before model results
+BAM,1008,5328,1260,150,150,3.0,49,3.0,2009-10-30,2022-03-31,4535,SCENARIO_ONLY,sample structure only; frozen before model results
+BAM,1260,5328,1260,138,138,2.19,62,2.19,2009-10-30,2021-03-31,4170,SCENARIO_ONLY,sample structure only; frozen before model results

@@ -1,0 +1,17 @@
+variable,reference_date_rule,publication_date_rule,earliest_usable_origin,leakage_risk
+BAM policy rate,decision date,official decision date,2006-12-19,Low at date-level origins
+Reserve requirement,effective/decision date,official decision publication date,Unknown,Medium until effective dates verified
+Interbank overnight rate,trading date,official daily publication date/time,Unknown,Medium due publication lag
+Central-bank liquidity injections,operation date,allotment/result publication time,Administrative results,No
+Banking liquidity deficit,measurement period,bulletin/report release date,May be revised,No
+Headline CPI index,reference month,contemporaneous HCP news-release date,Unknown,High without release-date map
+Core inflation,reference month,contemporaneous HCP news-release date,Unknown,High without first-release series
+Treasury auction results,auction date,official result publication timestamp,Administrative results generally final,No
+Government financing needs,accounting period,bulletin publication date,Revised fiscal data,No
+M3 money supply,reference month,statistics bulletin release date,Revised,No
+Bank credit growth,reference month,statistics bulletin release date,Revised,No
+EUR/MAD reference rate,fixing date,16:15 local publication (14:00 Ramadan),Same-day correction possible,No
+USD/MAD reference rate,fixing date,16:15 local publication (14:00 Ramadan),Same-day correction possible,No
+ECB deposit facility rate,effective date,ECB decision publication timestamp,Administrative,No
+German 10-year sovereign yield,trading date,end-of-day availability convention,Market data may be corrected,No
+Brent crude oil,trading date,source observation release date,Possible source revisions,No

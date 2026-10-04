@@ -1,2 +1,4 @@
 myenv
 TAUX/raw
+__pycache__/
+*.py[cod]

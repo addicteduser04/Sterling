@@ -1,0 +1,14 @@
+{
+  "CURVE": [
+    "bam_yield_curve"
+  ],
+  "MACRO_DOMESTIC_V1": [
+    "bam_policy_rate",
+    "hcp_cpi_headline",
+    "bam_interbank_weighted_average"
+  ],
+  "MOROCCO_MARKET_V1": [],
+  "MACRO_EXTERNAL_V1": [
+    "ecb_aaa_zero_coupon_curve"
+  ]
+}
